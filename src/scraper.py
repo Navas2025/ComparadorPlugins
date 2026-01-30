@@ -1,6 +1,7 @@
 """
 Scraper module for extracting plugin/theme data from websites.
 """
+import re
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -88,7 +89,6 @@ class WeadownScraper:
     
     def _extract_version(self, text):
         """Extract version number from text."""
-        import re
         # Look for version patterns like v1.2.3, 1.2.3, version 1.2
         patterns = [
             r'v?(\d+\.\d+(?:\.\d+)?)',
@@ -104,7 +104,6 @@ class WeadownScraper:
     
     def _clean_plugin_name(self, title):
         """Extract clean plugin name from title."""
-        import re
         # Remove version numbers and common suffixes
         name = re.sub(r'v?\d+\.\d+(?:\.\d+)?', '', title)
         name = re.sub(r'\s+(pro|premium|nulled|free|download)\s*', '', name, flags=re.IGNORECASE)
@@ -182,7 +181,6 @@ class PluginswpScraper:
     
     def _extract_version(self, text):
         """Extract version number from text."""
-        import re
         patterns = [
             r'v?(\d+\.\d+(?:\.\d+)?)',
             r'version\s+(\d+\.\d+(?:\.\d+)?)',
@@ -197,7 +195,6 @@ class PluginswpScraper:
     
     def _clean_plugin_name(self, title):
         """Extract clean plugin name from title."""
-        import re
         # Remove version numbers and common suffixes
         name = re.sub(r'v?\d+\.\d+(?:\.\d+)?', '', title)
         name = re.sub(r'\s+(pro|premium|nulled|free|download)\s*', '', name, flags=re.IGNORECASE)

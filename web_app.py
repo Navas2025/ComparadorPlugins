@@ -118,7 +118,7 @@ def get_config():
 def main():
     """Run the Flask application."""
     logger.info(f"Starting web server on port {config.FLASK_PORT}...")
-    logger.info("Access the UI at http://localhost:{config.FLASK_PORT}")
+    logger.info(f"Access the UI at http://localhost:{config.FLASK_PORT}")
     app.run(host='0.0.0.0', port=config.FLASK_PORT, debug=False)
 
 
