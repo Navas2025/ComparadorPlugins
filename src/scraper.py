@@ -8,6 +8,7 @@ import time
 import logging
 import unicodedata
 import json
+import traceback
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -225,7 +226,8 @@ class PluginswpScraper(BaseScraper):
                     if match:
                         try:
                             ajax_config = json.loads(match.group(1))
-                        except:
+                        except json.JSONDecodeError as e:
+                            logger.debug(f"Failed to parse AJAX config: {e}")
                             pass
             
             # Extract plugins from current page
@@ -233,18 +235,15 @@ class PluginswpScraper(BaseScraper):
             plugins.update(page_plugins)
             logger.info(f"Extracted {len(page_plugins)} plugins from initial page")
             
-            # If we found JetEngine configuration, try to load more pages via AJAX
-            if ajax_config and max_pages > 1:
-                plugins.update(self._load_more_pages_ajax(ajax_config, max_pages))
-            elif max_pages > 1:
-                # Fallback: try standard pagination
+            # Try to load more pages if requested
+            # Note: JetEngine AJAX detection is present but falls back to standard pagination
+            if max_pages > 1:
                 plugins.update(self._load_more_pages_standard(max_pages))
         
         except requests.exceptions.RequestException as e:
             logger.error(f"Error scraping pluginswp.online: {e}")
         except Exception as e:
             logger.error(f"Unexpected error scraping pluginswp.online: {e}")
-            import traceback
             logger.debug(traceback.format_exc())
         
         logger.info(f"Total scraped: {len(plugins)} plugins from pluginswp.online")
@@ -308,19 +307,6 @@ class PluginswpScraper(BaseScraper):
                 continue
         
         return plugins
-    
-    def _load_more_pages_ajax(self, ajax_config, max_pages):
-        """Load additional pages via JetEngine AJAX."""
-        plugins = {}
-        
-        # This is a placeholder for JetEngine AJAX implementation
-        # The actual implementation would require:
-        # 1. Understanding the specific AJAX endpoint
-        # 2. Extracting query parameters from ajax_config
-        # 3. Making POST requests with proper payload
-        
-        logger.info("JetEngine AJAX loading not fully implemented - using standard pagination")
-        return self._load_more_pages_standard(max_pages)
     
     def _load_more_pages_standard(self, max_pages):
         """Load additional pages using standard pagination."""
