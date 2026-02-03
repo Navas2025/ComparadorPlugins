@@ -19,6 +19,13 @@ class WeadownScraper:
     BASE_URL = "https://weadown.com"
     MAX_PAGES = 10  # Maximum number of pages to scrape
     
+    # Common regex patterns for version extraction
+    VERSION_PATTERNS = [
+        r'v?(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',  # Support up to 4 parts
+        r'version\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
+        r'ver\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
+    ]
+    
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
@@ -32,6 +39,7 @@ class WeadownScraper:
         Returns a dict mapping plugin names to their version and download URL.
         """
         plugins = {}
+        page_num = 0  # Initialize to track pages scraped
         
         try:
             # Scrape multiple pages of WordPress plugins
@@ -133,21 +141,16 @@ class WeadownScraper:
         # Normalize the text using unicodedata
         text = unicodedata.normalize('NFKD', text)
         
-        # Look for version patterns like v1.2.3, 1.2.3, version 1.2
-        patterns = [
-            r'v?(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',  # Support up to 4 parts
-            r'version\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
-            r'ver\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
-        ]
-        
-        for pattern in patterns:
+        # Use class-level patterns
+        for pattern in self.VERSION_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1)
         
         return None
     
-    def _clean_plugin_name(self, title):
+    @staticmethod
+    def _clean_plugin_name(title):
         """Extract clean plugin name from title using unicodedata for normalization."""
         # Normalize unicode characters
         title = unicodedata.normalize('NFKD', title)
@@ -168,6 +171,9 @@ class PluginswpScraper:
     
     BASE_URL = "http://pluginswp.online"
     MAX_LOADS = 10  # Maximum number of AJAX load-more requests
+    
+    # Shared regex patterns for version extraction
+    VERSION_PATTERNS = WeadownScraper.VERSION_PATTERNS
     
     def __init__(self):
         self.session = requests.Session()
@@ -402,31 +408,13 @@ class PluginswpScraper:
         # Normalize the text using unicodedata
         text = unicodedata.normalize('NFKD', text)
         
-        # Look for version patterns
-        patterns = [
-            r'v?(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',  # Support up to 4 parts
-            r'version\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
-            r'ver\s+(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',
-        ]
-        
-        for pattern in patterns:
+        # Use class-level patterns
+        for pattern in self.VERSION_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1)
         
         return None
     
-    def _clean_plugin_name(self, title):
-        """Extract clean plugin name from title using unicodedata for normalization."""
-        # Normalize unicode characters
-        title = unicodedata.normalize('NFKD', title)
-        
-        # Remove version numbers and common suffixes
-        name = re.sub(r'v?\d+\.\d+(?:\.\d+)?(?:\.\d+)?', '', title, flags=re.IGNORECASE)
-        name = re.sub(r'\s+(pro|premium|nulled|free|download|latest|update)\s*', '', name, flags=re.IGNORECASE)
-        name = re.sub(r'\s*[\[\(].*?[\]\)]', '', name)  # Remove bracketed content
-        name = name.strip(' -–|:,.')
-        
-        # Convert to lowercase and strip extra whitespace
-        name = ' '.join(name.lower().split())
-        return name if name else None
+    # Reuse the same name cleaning method from WeadownScraper
+    _clean_plugin_name = staticmethod(WeadownScraper._clean_plugin_name)
