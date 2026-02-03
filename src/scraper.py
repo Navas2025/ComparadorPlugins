@@ -6,92 +6,30 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import logging
+import unicodedata
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class WeadownScraper:
-    """Scraper for weadown.com."""
-    
-    BASE_URL = "https://weadown.com"
+class BaseScraper:
+    """Base scraper class with common functionality."""
     
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
-    
-    def scrape_plugins(self):
-        """
-        Scrape plugin/theme information from weadown.com.
-        Returns a dict mapping plugin names to their version and download URL.
-        """
-        plugins = {}
-        
-        try:
-            # Try to get WordPress plugins page
-            url = f"{self.BASE_URL}/category/wordpress-plugins/"
-            logger.info(f"Scraping {url}")
-            
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
-            # Find plugin entries (this is a general approach - may need adjustment)
-            articles = soup.find_all('article', class_='post')
-            
-            if not articles:
-                # Try alternative selectors
-                articles = soup.find_all('div', class_='post-item')
-            
-            logger.info(f"Found {len(articles)} potential plugin entries")
-            
-            for article in articles[:50]:  # Limit to first 50 for performance
-                try:
-                    # Try to extract plugin name and version
-                    title_elem = article.find(['h2', 'h3', 'h4'])
-                    if not title_elem:
-                        continue
-                    
-                    title = title_elem.get_text(strip=True)
-                    
-                    # Try to find version in title or content
-                    version = self._extract_version(title)
-                    
-                    # Try to get download URL
-                    link_elem = article.find('a')
-                    download_url = link_elem['href'] if link_elem and 'href' in link_elem.attrs else None
-                    
-                    if download_url and not download_url.startswith('http'):
-                        download_url = self.BASE_URL + download_url
-                    
-                    # Extract clean plugin name
-                    plugin_name = self._clean_plugin_name(title)
-                    
-                    if plugin_name:
-                        plugins[plugin_name] = {
-                            'version': version,
-                            'download_url': download_url,
-                            'raw_title': title
-                        }
-                
-                except Exception as e:
-                    logger.debug(f"Error parsing article: {e}")
-                    continue
-            
-        except Exception as e:
-            logger.error(f"Error scraping weadown.com: {e}")
-        
-        logger.info(f"Scraped {len(plugins)} plugins from weadown.com")
-        return plugins
     
     def _extract_version(self, text):
         """Extract version number from text."""
+        if not text:
+            return None
+        
         # Look for version patterns like v1.2.3, 1.2.3, version 1.2
         patterns = [
-            r'v?(\d+\.\d+(?:\.\d+)?)',
+            r'v?(\d+\.\d+(?:\.\d+)?(?:\.\d+)?)',  # Matches 1.2, 1.2.3, 1.2.3.4
             r'version\s+(\d+\.\d+(?:\.\d+)?)',
         ]
         
@@ -104,33 +42,162 @@ class WeadownScraper:
     
     def _clean_plugin_name(self, title):
         """Extract clean plugin name from title."""
-        # Remove version numbers and common suffixes
-        name = re.sub(r'v?\d+\.\d+(?:\.\d+)?', '', title)
-        name = re.sub(r'\s+(pro|premium|nulled|free|download)\s*', '', name, flags=re.IGNORECASE)
-        name = name.strip(' -–|')
-        return name.lower()
+        if not title:
+            return None
+        
+        # Normalize unicode characters
+        title = unicodedata.normalize('NFKD', title)
+        
+        # Remove version numbers first
+        name = re.sub(r'v?\d+\.\d+(?:\.\d+)?(?:\.\d+)?', '', title)
+        
+        # Remove common suffixes (at word boundaries)
+        name = re.sub(r'\b(pro|premium|nulled|free|download|wordpress|plugin|theme|version)\b', '', name, flags=re.IGNORECASE)
+        
+        # Remove everything after " - " or "|"
+        name = re.sub(r'\s+[\-–|]\s+.*$', '', name)
+        
+        # Clean up extra punctuation and whitespace
+        name = name.strip(' -–|:')
+        
+        # Convert to lowercase and normalize whitespace
+        name = ' '.join(name.lower().split())
+        
+        return name if name else None
 
 
-class PluginswpScraper:
-    """Scraper for pluginswp.online."""
+class WeadownScraper(BaseScraper):
+    """Scraper for weadown.com with pagination support."""
+    
+    BASE_URL = "https://weadown.com"
+    
+    def scrape_plugins(self, max_pages=5):
+        """
+        Scrape plugin/theme information from weadown.com with pagination.
+        Returns a dict mapping plugin names to their version and download URL.
+        
+        Args:
+            max_pages: Maximum number of pages to scrape (default: 5)
+        """
+        plugins = {}
+        
+        for page_num in range(1, max_pages + 1):
+            try:
+                # WordPress plugins category with pagination
+                if page_num == 1:
+                    url = f"{self.BASE_URL}/category/wordpress-plugins/"
+                else:
+                    url = f"{self.BASE_URL}/category/wordpress-plugins/page/{page_num}/"
+                
+                logger.info(f"Scraping page {page_num}: {url}")
+                
+                response = self.session.get(url, timeout=30)
+                
+                # Stop if page doesn't exist
+                if response.status_code == 404:
+                    logger.info(f"No more pages found at page {page_num}")
+                    break
+                
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # Find plugin entries - try multiple selectors
+                articles = soup.find_all('article', class_=re.compile(r'post'))
+                
+                if not articles:
+                    # Try alternative selectors
+                    articles = soup.find_all('div', class_='post-item')
+                
+                if not articles:
+                    # Try generic article tags
+                    articles = soup.find_all('article')
+                
+                if not articles:
+                    logger.warning(f"No articles found on page {page_num}")
+                    break
+                
+                logger.info(f"Found {len(articles)} entries on page {page_num}")
+                page_plugins = 0
+                
+                for article in articles:
+                    try:
+                        # Extract title and link
+                        title_elem = article.find(['h2', 'h3', 'h4'], class_=re.compile(r'(entry-title|post-title|title)'))
+                        if not title_elem:
+                            title_elem = article.find(['h2', 'h3', 'h4'])
+                        
+                        if not title_elem:
+                            continue
+                        
+                        # Get the link (usually the title is wrapped in <a>)
+                        link_elem = title_elem.find('a') if title_elem.find('a') else article.find('a', href=re.compile(r'/\d{4}/'))
+                        
+                        title = title_elem.get_text(strip=True)
+                        
+                        # Get post URL (not the direct download)
+                        post_url = None
+                        if link_elem and 'href' in link_elem.attrs:
+                            post_url = link_elem['href']
+                            if not post_url.startswith('http'):
+                                post_url = self.BASE_URL + post_url
+                        
+                        # Extract version from title
+                        version = self._extract_version(title)
+                        
+                        # Extract clean plugin name
+                        plugin_name = self._clean_plugin_name(title)
+                        
+                        if plugin_name and post_url:
+                            # Store with post URL (download URL would require visiting each post)
+                            plugins[plugin_name] = {
+                                'version': version,
+                                'download_url': post_url,  # This is the post URL
+                                'raw_title': title,
+                                'source': 'weadown'
+                            }
+                            page_plugins += 1
+                    
+                    except Exception as e:
+                        logger.debug(f"Error parsing article: {e}")
+                        continue
+                
+                logger.info(f"Extracted {page_plugins} plugins from page {page_num}")
+                
+                # Add delay between pages to be respectful
+                if page_num < max_pages:
+                    time.sleep(1)
+            
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error scraping page {page_num}: {e}")
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error on page {page_num}: {e}")
+                break
+        
+        logger.info(f"Total scraped: {len(plugins)} plugins from weadown.com")
+        return plugins
+
+
+class PluginswpScraper(BaseScraper):
+    """Scraper for pluginswp.online with JetEngine load-more support."""
     
     BASE_URL = "http://pluginswp.online"
     
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-    
-    def scrape_plugins(self):
+    def scrape_plugins(self, max_pages=5):
         """
         Scrape plugin/theme information from pluginswp.online.
-        Returns a dict mapping plugin names to their version.
+        Handles JetEngine load-more AJAX pagination.
+        
+        Args:
+            max_pages: Maximum number of pages to load (default: 5)
+        
+        Returns:
+            dict: Mapping plugin names to their version and metadata
         """
         plugins = {}
         
         try:
-            # Try main page or plugins category
+            # First, load the initial page to get the structure and any AJAX endpoints
             url = self.BASE_URL
             logger.info(f"Scraping {url}")
             
@@ -139,64 +206,166 @@ class PluginswpScraper:
             
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Find plugin entries (this is a general approach - may need adjustment)
-            articles = soup.find_all('article')
+            # Look for JetEngine load-more button/AJAX configuration
+            # JetEngine typically uses data attributes like data-query, data-page, etc.
+            load_more_button = soup.find('div', class_=re.compile(r'jet-listing-grid__load-more'))
             
-            if not articles:
-                # Try alternative selectors
-                articles = soup.find_all('div', class_='post')
+            if not load_more_button:
+                load_more_button = soup.find('button', class_=re.compile(r'load-more'))
             
-            logger.info(f"Found {len(articles)} potential plugin entries")
+            # Try to find JetEngine AJAX settings
+            ajax_config = None
+            scripts = soup.find_all('script')
+            for script in scripts:
+                script_text = script.string if script.string else ''
+                # Look for JetEngine config in JavaScript
+                if 'jet-engine' in script_text or 'listingData' in script_text:
+                    # Try to extract AJAX configuration
+                    match = re.search(r'listingData["\']?\s*:\s*(\{[^}]+\})', script_text)
+                    if match:
+                        try:
+                            ajax_config = json.loads(match.group(1))
+                        except:
+                            pass
             
-            for article in articles[:50]:  # Limit to first 50 for performance
-                try:
-                    # Try to extract plugin name and version
-                    title_elem = article.find(['h2', 'h3', 'h4'])
-                    if not title_elem:
-                        continue
-                    
-                    title = title_elem.get_text(strip=True)
-                    
-                    # Try to find version in title or content
-                    version = self._extract_version(title)
-                    
-                    # Extract clean plugin name
-                    plugin_name = self._clean_plugin_name(title)
-                    
-                    if plugin_name:
-                        plugins[plugin_name] = {
-                            'version': version,
-                            'raw_title': title
-                        }
-                
-                except Exception as e:
-                    logger.debug(f"Error parsing article: {e}")
-                    continue
+            # Extract plugins from current page
+            page_plugins = self._extract_plugins_from_page(soup)
+            plugins.update(page_plugins)
+            logger.info(f"Extracted {len(page_plugins)} plugins from initial page")
             
-        except Exception as e:
-            logger.error(f"Error scraping pluginswp.online: {e}")
+            # If we found JetEngine configuration, try to load more pages via AJAX
+            if ajax_config and max_pages > 1:
+                plugins.update(self._load_more_pages_ajax(ajax_config, max_pages))
+            elif max_pages > 1:
+                # Fallback: try standard pagination
+                plugins.update(self._load_more_pages_standard(max_pages))
         
-        logger.info(f"Scraped {len(plugins)} plugins from pluginswp.online")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error scraping pluginswp.online: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error scraping pluginswp.online: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
+        
+        logger.info(f"Total scraped: {len(plugins)} plugins from pluginswp.online")
         return plugins
     
-    def _extract_version(self, text):
-        """Extract version number from text."""
-        patterns = [
-            r'v?(\d+\.\d+(?:\.\d+)?)',
-            r'version\s+(\d+\.\d+(?:\.\d+)?)',
-        ]
+    def _extract_plugins_from_page(self, soup):
+        """Extract plugins from a BeautifulSoup page object."""
+        plugins = {}
         
-        for pattern in patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1)
+        # Find plugin entries - try multiple selectors
+        # JetEngine often uses jet-listing-grid__items
+        container = soup.find('div', class_=re.compile(r'jet-listing-grid__items'))
         
-        return None
+        if container:
+            articles = container.find_all('div', class_=re.compile(r'jet-listing-grid__item'))
+        else:
+            # Fallback to standard article tags
+            articles = soup.find_all('article')
+        
+        if not articles:
+            articles = soup.find_all('div', class_='post')
+        
+        logger.debug(f"Found {len(articles)} potential plugin entries")
+        
+        for article in articles:
+            try:
+                # Extract title - try multiple selectors
+                title_elem = article.find(['h2', 'h3', 'h4'], class_=re.compile(r'(entry-title|post-title|title|jet-listing-dynamic-field)'))
+                if not title_elem:
+                    title_elem = article.find(['h2', 'h3', 'h4'])
+                
+                if not title_elem:
+                    continue
+                
+                title = title_elem.get_text(strip=True)
+                
+                # Extract version from title or content
+                version = self._extract_version(title)
+                
+                # Try to find post URL
+                link_elem = title_elem.find('a') if title_elem.find('a') else article.find('a')
+                post_url = None
+                if link_elem and 'href' in link_elem.attrs:
+                    post_url = link_elem['href']
+                    if post_url and not post_url.startswith('http'):
+                        post_url = self.BASE_URL + post_url
+                
+                # Extract clean plugin name
+                plugin_name = self._clean_plugin_name(title)
+                
+                if plugin_name:
+                    plugins[plugin_name] = {
+                        'version': version,
+                        'post_url': post_url,
+                        'raw_title': title,
+                        'source': 'pluginswp'
+                    }
+            
+            except Exception as e:
+                logger.debug(f"Error parsing article: {e}")
+                continue
+        
+        return plugins
     
-    def _clean_plugin_name(self, title):
-        """Extract clean plugin name from title."""
-        # Remove version numbers and common suffixes
-        name = re.sub(r'v?\d+\.\d+(?:\.\d+)?', '', title)
-        name = re.sub(r'\s+(pro|premium|nulled|free|download)\s*', '', name, flags=re.IGNORECASE)
-        name = name.strip(' -–|')
-        return name.lower()
+    def _load_more_pages_ajax(self, ajax_config, max_pages):
+        """Load additional pages via JetEngine AJAX."""
+        plugins = {}
+        
+        # This is a placeholder for JetEngine AJAX implementation
+        # The actual implementation would require:
+        # 1. Understanding the specific AJAX endpoint
+        # 2. Extracting query parameters from ajax_config
+        # 3. Making POST requests with proper payload
+        
+        logger.info("JetEngine AJAX loading not fully implemented - using standard pagination")
+        return self._load_more_pages_standard(max_pages)
+    
+    def _load_more_pages_standard(self, max_pages):
+        """Load additional pages using standard pagination."""
+        plugins = {}
+        
+        for page_num in range(2, max_pages + 1):
+            try:
+                # Try common pagination patterns
+                urls_to_try = [
+                    f"{self.BASE_URL}/page/{page_num}/",
+                    f"{self.BASE_URL}/?paged={page_num}",
+                ]
+                
+                success = False
+                for url in urls_to_try:
+                    try:
+                        logger.info(f"Trying page {page_num}: {url}")
+                        response = self.session.get(url, timeout=30)
+                        
+                        if response.status_code == 404:
+                            continue
+                        
+                        response.raise_for_status()
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        
+                        page_plugins = self._extract_plugins_from_page(soup)
+                        
+                        if page_plugins:
+                            plugins.update(page_plugins)
+                            logger.info(f"Extracted {len(page_plugins)} plugins from page {page_num}")
+                            success = True
+                            break
+                    
+                    except requests.exceptions.RequestException:
+                        continue
+                
+                if not success:
+                    logger.info(f"No more pages found at page {page_num}")
+                    break
+                
+                # Delay between pages
+                time.sleep(1)
+            
+            except Exception as e:
+                logger.error(f"Error loading page {page_num}: {e}")
+                break
+        
+        return plugins
