@@ -72,6 +72,13 @@ class WeadownScraper(BaseScraper):
     
     BASE_URL = "https://weadown.com"
     
+    def _build_page_url(self, page_number):
+        """Construct URL for specific page - override in subclass for different categories."""
+        path_prefix = "/wordpress-plugins/"
+        if page_number == 1:
+            return f"{self.BASE_URL}{path_prefix}"
+        return f"{self.BASE_URL}{path_prefix}page/{page_number}/"
+    
     def scrape_plugins(self, max_pages=5):
         """
         Scrape plugin/theme information from weadown.com with pagination.
@@ -84,11 +91,7 @@ class WeadownScraper(BaseScraper):
         
         for page_num in range(1, max_pages + 1):
             try:
-                # WordPress plugins category with pagination
-                if page_num == 1:
-                    url = f"{self.BASE_URL}/category/wordpress-plugins/"
-                else:
-                    url = f"{self.BASE_URL}/category/wordpress-plugins/page/{page_num}/"
+                url = self._build_page_url(page_num)
                 
                 logger.info(f"Scraping page {page_num}: {url}")
                 
@@ -102,16 +105,8 @@ class WeadownScraper(BaseScraper):
                 response.raise_for_status()
                 soup = BeautifulSoup(response.content, 'html.parser')
                 
-                # Find plugin entries - try multiple selectors
-                articles = soup.find_all('article', class_=re.compile(r'post'))
-                
-                if not articles:
-                    # Try alternative selectors
-                    articles = soup.find_all('div', class_='post-item')
-                
-                if not articles:
-                    # Try generic article tags
-                    articles = soup.find_all('article')
+                # Extract articles using improved detection
+                articles = self._locate_article_elements(soup)
                 
                 if not articles:
                     logger.warning(f"No articles found on page {page_num}")
@@ -122,10 +117,8 @@ class WeadownScraper(BaseScraper):
                 
                 for article in articles:
                     try:
-                        # Extract title and link
-                        title_elem = article.find(['h2', 'h3', 'h4'], class_=re.compile(r'(entry-title|post-title|title)'))
-                        if not title_elem:
-                            title_elem = article.find(['h2', 'h3', 'h4'])
+                        # Extract title - check new HTML structure first
+                        title_elem = self._find_title_element(article)
                         
                         if not title_elem:
                             continue
@@ -177,16 +170,54 @@ class WeadownScraper(BaseScraper):
         
         logger.info(f"Total scraped: {len(plugins)} plugins from weadown.com")
         return plugins
+    
+    def _locate_article_elements(self, soup):
+        """Find article containers - checks for tdb-title-text structure first."""
+        # New structure: look for h1.tdb-title-text and get parent
+        h1_titles = soup.find_all('h1', class_='tdb-title-text')
+        if h1_titles:
+            parents = []
+            for h1 in h1_titles:
+                parent_article = h1.find_parent('article') or h1.find_parent('div', class_=re.compile(r'post'))
+                if parent_article and parent_article not in parents:
+                    parents.append(parent_article)
+            if parents:
+                return parents
+        
+        # Fallback to standard selectors
+        found = soup.find_all('article', class_=re.compile(r'post'))
+        if found:
+            return found
+        found = soup.find_all('div', class_='post-item')
+        if found:
+            return found
+        return soup.find_all('article')
+    
+    def _find_title_element(self, container):
+        """Extract title element, prioritizing tdb-title-text."""
+        # Check new structure
+        tdb_title = container.find('h1', class_='tdb-title-text')
+        if tdb_title:
+            return tdb_title
+        # Fallback
+        elem = container.find(['h2', 'h3', 'h4'], class_=re.compile(r'(entry-title|post-title|title)'))
+        if elem:
+            return elem
+        return container.find(['h1', 'h2', 'h3', 'h4'])
 
 
 class PluginswpScraper(BaseScraper):
-    """Scraper for pluginswp.online with JetEngine load-more support."""
+    """Scraper for plugins-wp.online with JetEngine load-more support."""
     
-    BASE_URL = "http://pluginswp.online"
+    BASE_URL = "https://plugins-wp.online"
+    
+    def _get_category_endpoint(self):
+        """Return the category path - override for themes."""
+        return "/plugins-wordpress/"
     
     def scrape_plugins(self, max_pages=5):
         """
-        Scrape plugin/theme information from pluginswp.online.
+        Scrape plugin/theme information from plugins-wp.online.
         Handles JetEngine load-more AJAX pagination.
         
         Args:
@@ -199,7 +230,7 @@ class PluginswpScraper(BaseScraper):
         
         try:
             # First, load the initial page to get the structure and any AJAX endpoints
-            url = self.BASE_URL
+            url = f"{self.BASE_URL}{self._get_category_endpoint()}"
             logger.info(f"Scraping {url}")
             
             response = self.session.get(url, timeout=30)
@@ -280,8 +311,10 @@ class PluginswpScraper(BaseScraper):
                 
                 title = title_elem.get_text(strip=True)
                 
-                # Extract version from title or content
+                # Extract version - check title first, then elementor structure
                 version = self._extract_version(title)
+                if not version:
+                    version = self._scan_elementor_version_info(article)
                 
                 # Try to find post URL
                 link_elem = title_elem.find('a') if title_elem.find('a') else article.find('a')
@@ -308,16 +341,29 @@ class PluginswpScraper(BaseScraper):
         
         return plugins
     
+    def _scan_elementor_version_info(self, container):
+        """Look for version in elementor icon list spans."""
+        icon_texts = container.find_all('span', class_='elementor-icon-list-text')
+        for span_elem in icon_texts:
+            content = span_elem.get_text(strip=True)
+            # Match Spanish/English "Version actual:" pattern
+            if 'versión actual:' in content.lower() or 'version actual:' in content.lower():
+                ver_match = re.search(r'actual:\s*v?(\d+\.\d+(?:\.\d+)?)', content, re.IGNORECASE)
+                if ver_match:
+                    return ver_match.group(1)
+        return None
+    
     def _load_more_pages_standard(self, max_pages):
         """Load additional pages using standard pagination."""
         plugins = {}
+        category_path = self._get_category_endpoint()
         
         for page_num in range(2, max_pages + 1):
             try:
-                # Try common pagination patterns
+                # Try common pagination patterns with category
                 urls_to_try = [
-                    f"{self.BASE_URL}/page/{page_num}/",
-                    f"{self.BASE_URL}/?paged={page_num}",
+                    f"{self.BASE_URL}{category_path}page/{page_num}/",
+                    f"{self.BASE_URL}{category_path}?paged={page_num}",
                 ]
                 
                 success = False
@@ -355,3 +401,23 @@ class PluginswpScraper(BaseScraper):
                 break
         
         return plugins
+
+
+class ThemeScraperForWeadown(WeadownScraper):
+    """Specialized scraper for Weadown theme listings."""
+    
+    def _build_page_url(self, page_number):
+        """Override to use theme category."""
+        theme_path = "/wordpress-theme/"
+        if page_number == 1:
+            return f"{self.BASE_URL}{theme_path}"
+        return f"{self.BASE_URL}{theme_path}page/{page_number}/"
+
+
+class ThemeScraperForPluginsWp(PluginswpScraper):
+    """Specialized scraper for Plugins-WP theme listings."""
+    
+    def _get_category_endpoint(self):
+        """Override to use theme category."""
+        return "/temas-wordpress/"
+

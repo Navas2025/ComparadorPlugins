@@ -9,6 +9,9 @@ import logging
 from src.app import ComparisonRunner
 from src.config import Config
 from src.database import Database
+from src.scraper_coordinator import ScraperCoordinator
+from src.scraper import WeadownScraper, PluginswpScraper, ThemeScraperForWeadown, ThemeScraperForPluginsWp
+from src.comparator import PluginComparator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +25,13 @@ app = Flask(__name__,
 config = Config()
 runner = ComparisonRunner()
 db = Database(config.DATABASE_PATH)
+coordinator = ScraperCoordinator(worker_pool_size=4)
+
+# Register scraper tasks
+coordinator.register_task('pw_plugins', PluginswpScraper)
+coordinator.register_task('pw_themes', ThemeScraperForPluginsWp)
+coordinator.register_task('wd_plugins', WeadownScraper)
+coordinator.register_task('wd_themes', ThemeScraperForWeadown)
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
@@ -50,6 +60,82 @@ if config.SCHEDULE_ENABLED:
 def index():
     """Main page showing comparison history."""
     return render_template('index.html')
+
+
+@app.route('/api/scrape/plugins-wp/plugins', methods=['POST'])
+def trigger_pw_plugin_scrape():
+    """Start scraping plugins from plugins-wp.online."""
+    page_limit = request.json.get('max_pages', 5) if request.json else 5
+    coordinator.register_task('pw_plugins', PluginswpScraper, page_limit)
+    started = coordinator.execute_task('pw_plugins')
+    if started:
+        return jsonify({'msg': 'Scraping initiated', 'state': 'active'})
+    return jsonify({'error': 'Task already running'}), 400
+
+
+@app.route('/api/scrape/plugins-wp/themes', methods=['POST'])
+def trigger_pw_theme_scrape():
+    """Start scraping themes from plugins-wp.online."""
+    page_limit = request.json.get('max_pages', 5) if request.json else 5
+    coordinator.register_task('pw_themes', ThemeScraperForPluginsWp, page_limit)
+    started = coordinator.execute_task('pw_themes')
+    if started:
+        return jsonify({'msg': 'Scraping initiated', 'state': 'active'})
+    return jsonify({'error': 'Task already running'}), 400
+
+
+@app.route('/api/scrape/weadown/plugins', methods=['POST'])
+def trigger_wd_plugin_scrape():
+    """Start scraping plugins from weadown.com."""
+    page_limit = request.json.get('max_pages', 5) if request.json else 5
+    coordinator.register_task('wd_plugins', WeadownScraper, page_limit)
+    started = coordinator.execute_task('wd_plugins')
+    if started:
+        return jsonify({'msg': 'Scraping initiated', 'state': 'active'})
+    return jsonify({'error': 'Task already running'}), 400
+
+
+@app.route('/api/scrape/weadown/themes', methods=['POST'])
+def trigger_wd_theme_scrape():
+    """Start scraping themes from weadown.com."""
+    page_limit = request.json.get('max_pages', 5) if request.json else 5
+    coordinator.register_task('wd_themes', ThemeScraperForWeadown, page_limit)
+    started = coordinator.execute_task('wd_themes')
+    if started:
+        return jsonify({'msg': 'Scraping initiated', 'state': 'active'})
+    return jsonify({'error': 'Task already running'}), 400
+
+
+@app.route('/api/compare', methods=['POST'])
+def perform_comparison():
+    """Execute comparison between scraped datasets."""
+    # Retrieve all scraped data
+    pw_plugin_data = coordinator.retrieve_data('pw_plugins')
+    pw_theme_data = coordinator.retrieve_data('pw_themes')
+    wd_plugin_data = coordinator.retrieve_data('wd_plugins')
+    wd_theme_data = coordinator.retrieve_data('wd_themes')
+    
+    # Merge collections
+    weadown_combined = {**wd_plugin_data, **wd_theme_data}
+    pluginswp_combined = {**pw_plugin_data, **pw_theme_data}
+    
+    if not weadown_combined and not pluginswp_combined:
+        return jsonify({'error': 'No scraped data available'}), 400
+    
+    try:
+        comparator = PluginComparator()
+        diffs = comparator.compare(weadown_combined, pluginswp_combined)
+        comp_id = db.save_comparison(diffs)
+        
+        return jsonify({
+            'msg': 'Comparison finished',
+            'id': comp_id,
+            'diff_count': len(diffs),
+            'diffs': diffs
+        })
+    except Exception as err:
+        logger.error(f"Comparison error: {err}")
+        return jsonify({'error': str(err)}), 500
 
 
 @app.route('/api/comparisons')
@@ -90,12 +176,19 @@ def stop_comparison():
 
 @app.route('/api/status')
 def get_status():
-    """API endpoint to get current status."""
+    """API endpoint to get current status with scraper details."""
+    all_scraper_info = coordinator.get_all_status()
     return jsonify({
         'running': runner.is_running(),
         'smtp_configured': config.is_configured(),
         'schedule_enabled': config.SCHEDULE_ENABLED,
-        'schedule_time': f"{config.SCHEDULE_HOUR:02d}:{config.SCHEDULE_MINUTE:02d}"
+        'schedule_time': f"{config.SCHEDULE_HOUR:02d}:{config.SCHEDULE_MINUTE:02d}",
+        'scrapers': {
+            'plugins_wp_plugins': all_scraper_info.get('pw_plugins', {}),
+            'plugins_wp_themes': all_scraper_info.get('pw_themes', {}),
+            'weadown_plugins': all_scraper_info.get('wd_plugins', {}),
+            'weadown_themes': all_scraper_info.get('wd_themes', {})
+        }
     })
 
 
