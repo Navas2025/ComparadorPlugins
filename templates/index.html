@@ -1,10 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plugin Comparator</title>
+    <title>Comparador de Plugins y Temas</title>
     <style>
+        :root {
+            --primary-hue: 240;
+            --accent-hue: 280;
+            --bg-main: hsl(var(--primary-hue), 20%, 95%);
+            --surface-primary: white;
+            --text-primary: hsl(var(--primary-hue), 30%, 15%);
+            --text-secondary: hsl(var(--primary-hue), 15%, 45%);
+            --accent-primary: hsl(var(--accent-hue), 70%, 55%);
+            --accent-hover: hsl(var(--accent-hue), 70%, 45%);
+            --border-color: hsl(var(--primary-hue), 20%, 85%);
+            --success-color: hsl(140, 60%, 50%);
+            --danger-color: hsl(0, 70%, 60%);
+            --warning-color: hsl(40, 90%, 55%);
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -12,224 +27,269 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 1.5rem;
         }
         
-        .container {
-            max-width: 1200px;
+        .app-container {
+            max-width: 1400px;
             margin: 0 auto;
-            background: white;
+        }
+        
+        header {
+            background: linear-gradient(135deg, hsl(var(--primary-hue), 60%, 50%), hsl(var(--accent-hue), 60%, 50%));
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .scraper-card {
+            background: var(--surface-primary);
             border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        
-        .controls {
-            padding: 20px 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 2px solid transparent;
             transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #5568d3;
+        .scraper-card:hover {
+            border-color: var(--accent-primary);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .btn-danger {
-            background: #dc3545;
+        .scraper-card h3 {
+            color: var(--accent-primary);
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .scraper-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-plugin {
+            background: hsl(200, 70%, 60%);
             color: white;
         }
         
-        .btn-danger:hover {
-            background: #c82333;
+        .btn-plugin:hover:not(:disabled) {
+            background: hsl(200, 70%, 50%);
         }
         
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
+        .btn-theme {
+            background: hsl(280, 60%, 60%);
+            color: white;
         }
         
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-left: auto;
+        .btn-theme:hover:not(:disabled) {
+            background: hsl(280, 60%, 50%);
         }
         
-        .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
         }
         
-        .status-indicator.running {
-            background: #28a745;
-        }
+        .status-idle { background: hsl(0, 0%, 85%); color: hsl(0, 0%, 30%); }
+        .status-pending { background: hsl(40, 90%, 85%); color: hsl(40, 90%, 30%); }
+        .status-active { background: hsl(200, 90%, 85%); color: hsl(200, 90%, 30%); animation: pulse-animation 2s infinite; }
+        .status-finished { background: hsl(140, 70%, 85%); color: hsl(140, 70%, 25%); }
+        .status-failed { background: hsl(0, 70%, 90%); color: hsl(0, 70%, 40%); }
         
-        .status-indicator.idle {
-            background: #6c757d;
-        }
-        
-        @keyframes pulse {
+        @keyframes pulse-animation {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.6; }
         }
         
-        .content {
-            padding: 30px;
+        .item-counter {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-top: 0.5rem;
         }
         
-        .config-alert {
-            padding: 15px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            color: #856404;
+        .comparison-section {
+            background: var(--surface-primary);
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 2rem;
         }
         
-        .config-alert.success {
-            background: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-        }
-        
-        .schedule-info {
-            padding: 15px;
-            background: #e7f3ff;
-            border: 1px solid #b3d7ff;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            color: #004085;
-        }
-        
-        .section-title {
-            font-size: 1.5em;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        
-        .comparison-list {
-            list-style: none;
-        }
-        
-        .comparison-item {
-            background: #f8f9fa;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border-left: 4px solid #667eea;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .comparison-item:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
-        }
-        
-        .comparison-header {
+        .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 1.5rem;
         }
         
-        .comparison-date {
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+        
+        .compare-btn {
+            background: linear-gradient(135deg, var(--accent-primary), hsl(var(--accent-hue), 70%, 45%));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
             font-weight: 600;
-            color: #333;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
         
-        .comparison-badge {
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 12px;
+        .compare-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, hsl(var(--primary-hue), 50%, 96%), hsl(var(--accent-hue), 30%, 96%));
+            padding: 1.25rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border-color);
+            background: var(--surface-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
             font-weight: 600;
         }
         
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
+        .filter-btn.active {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
         }
         
-        .badge-error {
-            background: #f8d7da;
-            color: #721c24;
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
         }
         
-        .comparison-stats {
-            color: #666;
-        }
-        
-        .differences-table {
+        .results-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            overflow: hidden;
+            border-radius: 8px;
         }
         
-        .differences-table th,
-        .differences-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        .differences-table th {
-            background: #667eea;
+        .results-table thead {
+            background: linear-gradient(135deg, hsl(var(--primary-hue), 60%, 50%), hsl(var(--accent-hue), 60%, 50%));
             color: white;
+        }
+        
+        .results-table th {
+            padding: 1rem;
+            text-align: left;
             font-weight: 600;
         }
         
-        .differences-table tr:hover {
-            background: #f8f9fa;
+        .results-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .results-table tbody tr:hover {
+            background: hsl(var(--primary-hue), 50%, 98%);
+        }
+        
+        .version-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        
+        .outdated-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: var(--warning-color);
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
         }
         
         .download-link {
-            color: #667eea;
+            color: var(--accent-primary);
             text-decoration: none;
             font-weight: 600;
         }
@@ -238,351 +298,266 @@
             text-decoration: underline;
         }
         
-        .empty-state {
+        .empty-message {
             text-align: center;
-            padding: 60px 20px;
-            color: #6c757d;
-        }
-        
-        .empty-state svg {
-            width: 100px;
-            height: 100px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
+            padding: 3rem;
+            color: var(--text-secondary);
         }
         
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
             width: 40px;
             height: 40px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+            margin: 2rem auto;
         }
         
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 90%;
-            max-height: 90%;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #6c757d;
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔌 Plugin Comparator</h1>
-            <p>Compare plugin versions between Weadown and PluginsWP</p>
-        </div>
+    <div class="app-container">
+        <header>
+            <h1>🔌 Comparador de Plugins y Temas WordPress</h1>
+            <p>Gestión y comparación entre Plugins-WP.online y Weadown.com</p>
+        </header>
         
-        <div class="controls">
-            <button class="btn btn-primary" id="runBtn" onclick="runComparison()">Run Comparison</button>
-            <button class="btn btn-danger" id="stopBtn" onclick="stopComparison()" disabled>Stop</button>
-            <div class="status">
-                <span id="statusText">Idle</span>
-                <div class="status-indicator idle" id="statusIndicator"></div>
+        <div class="control-grid">
+            <div class="scraper-card">
+                <h3>🌐 Plugins-WP.online</h3>
+                <div class="scraper-actions">
+                    <button class="action-btn btn-plugin" onclick="triggerScraper('plugins-wp', 'plugins')">
+                        <span>📦</span> Plugins
+                    </button>
+                    <button class="action-btn btn-theme" onclick="triggerScraper('plugins-wp', 'themes')">
+                        <span>🎨</span> Temas
+                    </button>
+                </div>
+                <div>
+                    <span class="status-badge status-idle" id="status-pw-plugins">Idle</span>
+                    <span class="item-counter" id="count-pw-plugins">0</span>
+                </div>
+                <div style="margin-top: 0.5rem;">
+                    <span class="status-badge status-idle" id="status-pw-themes">Idle</span>
+                    <span class="item-counter" id="count-pw-themes">0</span>
+                </div>
             </div>
-        </div>
-        
-        <div class="content">
-            <div id="configAlert"></div>
-            <div id="scheduleInfo"></div>
             
-            <h2 class="section-title">Comparison History</h2>
-            <div id="comparisonList" class="loading">
-                <div class="spinner"></div>
-                <p>Loading comparisons...</p>
+            <div class="scraper-card">
+                <h3>🌍 Weadown.com</h3>
+                <div class="scraper-actions">
+                    <button class="action-btn btn-plugin" onclick="triggerScraper('weadown', 'plugins')">
+                        <span>📦</span> Plugins
+                    </button>
+                    <button class="action-btn btn-theme" onclick="triggerScraper('weadown', 'themes')">
+                        <span>🎨</span> Temas
+                    </button>
+                </div>
+                <div>
+                    <span class="status-badge status-idle" id="status-wd-plugins">Idle</span>
+                    <span class="item-counter" id="count-wd-plugins">0</span>
+                </div>
+                <div style="margin-top: 0.5rem;">
+                    <span class="status-badge status-idle" id="status-wd-themes">Idle</span>
+                    <span class="item-counter" id="count-wd-themes">0</span>
+                </div>
             </div>
         </div>
-    </div>
-    
-    <div class="modal" id="detailModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Comparison Details</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+        
+        <div class="comparison-section">
+            <div class="section-header">
+                <h2 class="section-title">⚖️ Comparación</h2>
+                <button class="compare-btn" onclick="executeComparison()">Comparar Ahora</button>
             </div>
-            <div id="modalBody"></div>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-label">PW Plugins</div>
+                    <div class="stat-value" id="total-pw-plugins">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">PW Temas</div>
+                    <div class="stat-value" id="total-pw-themes">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">WD Plugins</div>
+                    <div class="stat-value" id="total-wd-plugins">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">WD Temas</div>
+                    <div class="stat-value" id="total-wd-themes">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">⚠️ Desactualizados</div>
+                    <div class="stat-value" id="total-outdated">0</div>
+                </div>
+            </div>
+            
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">Todos</button>
+                <button class="filter-btn" data-filter="outdated">Desactualizados</button>
+                <input type="text" class="search-input" id="search-box" placeholder="🔍 Buscar...">
+            </div>
+            
+            <div id="comparison-results">
+                <div class="empty-message">
+                    Ejecuta los scrapers y presiona "Comparar Ahora" para ver resultados
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
-        let statusCheckInterval;
+        let currentFilter = 'all';
+        let comparisonData = [];
         
-        async function loadStatus() {
+        // Poll status every 2 seconds
+        setInterval(refreshStatus, 2000);
+        refreshStatus();
+        
+        async function refreshStatus() {
             try {
-                const response = await fetch('/api/status');
-                const status = await response.json();
-                
-                updateStatusUI(status);
-                
-                // Update config alert
-                const configAlert = document.getElementById('configAlert');
-                if (!status.smtp_configured) {
-                    configAlert.innerHTML = `
-                        <div class="config-alert">
-                            ⚠️ SMTP is not configured. Email notifications will not be sent. 
-                            Please update your .env file with SMTP credentials.
-                        </div>
-                    `;
-                } else {
-                    configAlert.innerHTML = `
-                        <div class="config-alert success">
-                            ✓ SMTP is configured. Email notifications are enabled.
-                        </div>
-                    `;
-                }
-                
-                // Update schedule info
-                const scheduleInfo = document.getElementById('scheduleInfo');
-                if (status.schedule_enabled) {
-                    scheduleInfo.innerHTML = `
-                        <div class="schedule-info">
-                            📅 Automatic comparison is scheduled daily at ${status.schedule_time}
-                        </div>
-                    `;
-                } else {
-                    scheduleInfo.innerHTML = '';
-                }
-            } catch (error) {
-                console.error('Failed to load status:', error);
+                const resp = await fetch('/api/status');
+                const data = await resp.json();
+                updateUIWithStatus(data);
+            } catch (err) {
+                console.error('Status fetch error:', err);
             }
         }
         
-        function updateStatusUI(status) {
-            const statusText = document.getElementById('statusText');
-            const statusIndicator = document.getElementById('statusIndicator');
-            const runBtn = document.getElementById('runBtn');
-            const stopBtn = document.getElementById('stopBtn');
+        function updateUIWithStatus(data) {
+            const scrapers = data.scrapers || {};
             
-            if (status.running) {
-                statusText.textContent = 'Running';
-                statusIndicator.className = 'status-indicator running';
-                runBtn.disabled = true;
-                stopBtn.disabled = false;
-            } else {
-                statusText.textContent = 'Idle';
-                statusIndicator.className = 'status-indicator idle';
-                runBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-        }
-        
-        async function loadComparisons() {
-            try {
-                const response = await fetch('/api/comparisons');
-                const comparisons = await response.json();
-                
-                const listDiv = document.getElementById('comparisonList');
-                
-                if (comparisons.length === 0) {
-                    listDiv.innerHTML = `
-                        <div class="empty-state">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            <h3>No comparisons yet</h3>
-                            <p>Click "Run Comparison" to start your first comparison</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                const listHTML = comparisons.map(comp => `
-                    <div class="comparison-item" onclick="showDetails(${comp.id})">
-                        <div class="comparison-header">
-                            <span class="comparison-date">${new Date(comp.timestamp).toLocaleString()}</span>
-                            <span class="comparison-badge ${comp.status === 'success' ? 'badge-success' : 'badge-error'}">
-                                ${comp.status.toUpperCase()}
-                            </span>
-                        </div>
-                        <div class="comparison-stats">
-                            ${comp.total_differences} difference(s) found
-                            ${comp.error_message ? `<br><span style="color: #dc3545;">Error: ${comp.error_message}</span>` : ''}
-                        </div>
-                    </div>
-                `).join('');
-                
-                listDiv.innerHTML = `<ul class="comparison-list">${listHTML}</ul>`;
-            } catch (error) {
-                console.error('Failed to load comparisons:', error);
-                document.getElementById('comparisonList').innerHTML = `
-                    <div class="empty-state">
-                        <p style="color: #dc3545;">Failed to load comparisons</p>
-                    </div>
-                `;
-            }
-        }
-        
-        async function showDetails(comparisonId) {
-            try {
-                const response = await fetch(`/api/comparison/${comparisonId}`);
-                const comparison = await response.json();
-                
-                const modal = document.getElementById('detailModal');
-                const modalBody = document.getElementById('modalBody');
-                
-                let differencesHTML = '';
-                if (comparison.differences && comparison.differences.length > 0) {
-                    differencesHTML = `
-                        <table class="differences-table">
-                            <thead>
-                                <tr>
-                                    <th>Plugin Name</th>
-                                    <th>Weadown Version</th>
-                                    <th>PluginsWP Version</th>
-                                    <th>Download</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${comparison.differences.map(diff => `
-                                    <tr>
-                                        <td>${diff.plugin_name}</td>
-                                        <td>${diff.weadown_version || 'N/A'}</td>
-                                        <td>${diff.pluginswp_version || 'N/A'}</td>
-                                        <td>
-                                            ${diff.download_url ? 
-                                                `<a href="${diff.download_url}" class="download-link" target="_blank">Download</a>` : 
-                                                'N/A'}
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                } else {
-                    differencesHTML = '<p>No differences found</p>';
-                }
-                
-                modalBody.innerHTML = `
-                    <p><strong>Date:</strong> ${new Date(comparison.timestamp).toLocaleString()}</p>
-                    <p><strong>Status:</strong> ${comparison.status}</p>
-                    <p><strong>Total Differences:</strong> ${comparison.total_differences}</p>
-                    ${comparison.error_message ? `<p><strong>Error:</strong> ${comparison.error_message}</p>` : ''}
-                    ${differencesHTML}
-                `;
-                
-                modal.classList.add('active');
-            } catch (error) {
-                console.error('Failed to load comparison details:', error);
-                alert('Failed to load comparison details');
-            }
-        }
-        
-        function closeModal() {
-            document.getElementById('detailModal').classList.remove('active');
-        }
-        
-        async function runComparison() {
-            try {
-                const response = await fetch('/api/run', { method: 'POST' });
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert('Comparison started! This may take a few minutes.');
-                    startStatusPolling();
-                } else {
-                    alert('Failed to start comparison: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Failed to run comparison:', error);
-                alert('Failed to start comparison');
-            }
-        }
-        
-        async function stopComparison() {
-            try {
-                const response = await fetch('/api/stop', { method: 'POST' });
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert('Comparison stopped');
-                } else {
-                    alert('Failed to stop comparison: ' + result.error);
-                }
-            } catch (error) {
-                console.error('Failed to stop comparison:', error);
-                alert('Failed to stop comparison');
-            }
-        }
-        
-        function startStatusPolling() {
-            if (statusCheckInterval) return;
+            // Update Plugins-WP status
+            updateScraperUI('pw-plugins', scrapers.plugins_wp_plugins);
+            updateScraperUI('pw-themes', scrapers.plugins_wp_themes);
+            updateScraperUI('wd-plugins', scrapers.weadown_plugins);
+            updateScraperUI('wd-themes', scrapers.weadown_themes);
             
-            statusCheckInterval = setInterval(async () => {
-                await loadStatus();
-                
-                const status = await fetch('/api/status').then(r => r.json());
-                if (!status.running) {
-                    stopStatusPolling();
-                    loadComparisons(); // Reload comparisons when done
-                }
-            }, 2000);
+            // Update totals
+            document.getElementById('total-pw-plugins').textContent = scrapers.plugins_wp_plugins?.items || 0;
+            document.getElementById('total-pw-themes').textContent = scrapers.plugins_wp_themes?.items || 0;
+            document.getElementById('total-wd-plugins').textContent = scrapers.weadown_plugins?.items || 0;
+            document.getElementById('total-wd-themes').textContent = scrapers.weadown_themes?.items || 0;
         }
         
-        function stopStatusPolling() {
-            if (statusCheckInterval) {
-                clearInterval(statusCheckInterval);
-                statusCheckInterval = null;
+        function updateScraperUI(id, info) {
+            if (!info) return;
+            
+            const statusEl = document.getElementById(`status-${id}`);
+            const countEl = document.getElementById(`count-${id}`);
+            
+            if (statusEl) {
+                statusEl.className = `status-badge status-${info.state || 'idle'}`;
+                statusEl.textContent = info.state || 'idle';
+            }
+            
+            if (countEl) {
+                countEl.textContent = info.items || 0;
             }
         }
         
-        // Initial load
-        loadStatus();
-        loadComparisons();
+        async function triggerScraper(site, type) {
+            const url = `/api/scrape/${site}/${type}`;
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({max_pages: 5})
+                });
+                const result = await resp.json();
+                if (!resp.ok) {
+                    alert('Error: ' + (result.error || 'Failed'));
+                }
+            } catch (err) {
+                console.error('Scraper trigger error:', err);
+                alert('Failed to start scraper');
+            }
+        }
         
-        // Refresh every 30 seconds
-        setInterval(() => {
-            loadStatus();
-            loadComparisons();
-        }, 30000);
+        async function executeComparison() {
+            try {
+                const resp = await fetch('/api/compare', {method: 'POST'});
+                const result = await resp.json();
+                
+                if (resp.ok) {
+                    comparisonData = result.diffs || [];
+                    document.getElementById('total-outdated').textContent = comparisonData.length;
+                    renderComparisonTable();
+                } else {
+                    alert('Comparison error: ' + (result.error || 'Unknown'));
+                }
+            } catch (err) {
+                console.error('Comparison error:', err);
+                alert('Failed to execute comparison');
+            }
+        }
+        
+        function renderComparisonTable() {
+            const container = document.getElementById('comparison-results');
+            
+            if (comparisonData.length === 0) {
+                container.innerHTML = '<div class="empty-message">No hay diferencias encontradas</div>';
+                return;
+            }
+            
+            let filtered = comparisonData;
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+            
+            if (searchTerm) {
+                filtered = filtered.filter(item => item.name.toLowerCase().includes(searchTerm));
+            }
+            
+            if (currentFilter === 'outdated') {
+                filtered = filtered.filter(item => item.weadown_version !== item.pluginswp_version);
+            }
+            
+            const tableHTML = `
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Versión Weadown</th>
+                            <th>Versión Plugins-WP</th>
+                            <th>Descarga</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map(item => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td class="version-cell">${item.weadown_version || 'N/A'}</td>
+                                <td class="version-cell">${item.pluginswp_version || 'N/A'}</td>
+                                <td>
+                                    ${item.download_url ? 
+                                        `<a href="${item.download_url}" class="download-link" target="_blank">⬇️ Descargar</a>` : 
+                                        'N/A'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            container.innerHTML = tableHTML;
+        }
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.getAttribute('data-filter');
+                renderComparisonTable();
+            });
+        });
+        
+        // Search input
+        document.getElementById('search-box').addEventListener('input', renderComparisonTable);
     </script>
 </body>
 </html>
