@@ -1,250 +1,300 @@
 # ComparadorPlugins 🔌
 
-A comprehensive Python application for comparing plugin and theme versions between [weadown.com](https://weadown.com/) and [pluginswp.online](http://pluginswp.online). The tool automatically scrapes both websites, identifies version differences, sends email notifications, and provides both CLI and web interfaces for monitoring and control.
+Aplicación Python para comparar versiones de plugins y temas de WordPress entre [plugins-wp.online](https://plugins-wp.online) y [weadown.com](https://weadown.com). La herramienta scrapea automáticamente ambos sitios, identifica diferencias de versiones con un umbral de similitud del 80%, y proporciona interfaces CLI y web para visualización.
 
-## Features
+## Características
 
-- 🔍 **Automated Scraping**: Retrieves plugin/theme data from both weadown.com and pluginswp.online
-- 📊 **Version Comparison**: Identifies differences between the two sources
-- 📧 **Email Notifications**: Sends detailed reports via SMTP with download URLs
-- 💾 **History Persistence**: Stores comparison results in SQLite database
-- 🖥️ **CLI Interface**: Command-line tools for running and managing comparisons
-- 🌐 **Web UI**: Beautiful Flask-based interface for viewing history and controlling runs
-- ⏰ **Scheduled Runs**: Daily automated comparisons using APScheduler
-- 🔐 **Secure Configuration**: SMTP credentials managed via .env file
+- 🔍 **Scraping Automatizado**: Extrae datos de plugins y temas de ambos sitios web
+- 📊 **Comparación con Umbral 80%**: Identifica coincidencias exactas y similares con difflib
+- 📁 **Exportación a CSV**: Guarda resultados en archivos CSV organizados
+- 🖥️ **Interfaz CLI**: Script `run_all.py` para ejecutar todo el flujo desde terminal
+- 🌐 **Interfaz Web**: Flask con tabs, filtros, búsqueda y actualización en tiempo real
+- 🎨 **Diseño Moderno**: Gradiente púrpura con tarjetas de estadísticas coloridas
+- ⚡ **Threading**: Ejecución de scrapers en background sin bloquear la UI
 
-## Prerequisites
+## Requisitos
 
-- Python 3.7 or higher
-- pip (Python package installer)
+- Python 3.7 o superior
+- pip (instalador de paquetes de Python)
 
-## Installation
+## Instalación
 
-1. **Clone the repository**:
+1. **Clonar el repositorio**:
 ```bash
 git clone https://github.com/Navas2025/ComparadorPlugins.git
 cd ComparadorPlugins
 ```
 
-2. **Create a virtual environment** (recommended):
+2. **Crear entorno virtual** (recomendado):
 ```bash
-python -m venv venv
+python3 -m venv venv
 
-# On Windows
+# En Windows
 venv\Scripts\activate
 
-# On Linux/Mac
+# En Linux/Mac
 source venv/bin/activate
 ```
 
-3. **Install dependencies**:
+3. **Instalar dependencias**:
 ```bash
 pip install -r requirements.txt
 ```
 
-## Configuration
-
-1. **Create your .env file**:
-```bash
-cp .env.example .env
-```
-
-2. **Edit the .env file** with your settings:
-
-```env
-# SMTP Email Configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM=your-email@gmail.com
-SMTP_TO=recipient@example.com
-
-# Application Configuration
-FLASK_PORT=5000
-DATABASE_PATH=./data/comparisons.db
-SCHEDULE_ENABLED=true
-SCHEDULE_HOUR=9
-SCHEDULE_MINUTE=0
-```
-
-### SMTP Configuration Notes
-
-- **For Gmail**: 
-  - Use an [App Password](https://support.google.com/accounts/answer/185833) instead of your regular password
-  - Enable 2-factor authentication first
-  - Go to Google Account → Security → App Passwords to generate one
-
-- **For other providers**: 
-  - Check your email provider's SMTP settings
-  - Common ports: 587 (TLS), 465 (SSL), 25 (unsecured)
-
-## Usage
-
-### Command Line Interface (CLI)
-
-The CLI provides quick access to run comparisons and check status:
-
-#### Run a comparison immediately:
-```bash
-python cli.py run
-```
-
-#### Check current status:
-```bash
-python cli.py status
-```
-
-#### View configuration:
-```bash
-python cli.py config
-```
-
-### Web Interface
-
-The web interface provides a visual dashboard for managing comparisons and viewing history.
-
-#### Start the web server:
-```bash
-python web_app.py
-```
-
-The web interface will be available at: **http://localhost:5000**
-
-#### Features of the Web UI:
-- ✅ View all comparison history
-- ✅ Start/stop comparison runs
-- ✅ View detailed differences for each comparison
-- ✅ See download URLs for plugins with version differences
-- ✅ Monitor current running status
-- ✅ Check SMTP configuration status
-- ✅ View scheduled run information
-
-### Scheduled Runs
-
-The application includes a built-in scheduler that runs comparisons automatically:
-
-1. **Enable scheduling** in your .env file:
-```env
-SCHEDULE_ENABLED=true
-SCHEDULE_HOUR=9
-SCHEDULE_MINUTE=0
-```
-
-2. **Start the web server** (scheduler runs in background):
-```bash
-python web_app.py
-```
-
-The scheduler will automatically run comparisons at the specified time each day while the web server is running.
-
-## Project Structure
+## Estructura del Proyecto
 
 ```
 ComparadorPlugins/
-├── src/
-│   ├── app.py              # Main application logic
-│   ├── config.py           # Configuration management
-│   ├── database.py         # SQLite database operations
-│   ├── scraper.py          # Web scrapers for both sites
-│   ├── comparator.py       # Version comparison logic
-│   └── email_notifier.py   # SMTP email notifications
+├── scrapers/
+│   ├── scraper_plugins_wp.py        # Scrapea plugins de plugins-wp.online
+│   ├── scraper_plugins_weadown.py   # Scrapea plugins de weadown.com
+│   ├── scraper_temas_wp.py          # Scrapea temas de plugins-wp.online
+│   └── scraper_temas_weadown.py     # Scrapea temas de weadown.com
+├── comparadores/
+│   ├── comparacion_plugins.py       # Compara plugins (umbral 80%)
+│   └── comparacion_temas.py         # Compara temas (umbral 80%)
+├── data/                            # CSVs generados automáticamente
+│   ├── plugins_wp.csv               # Plugins scrapeados de plugins-wp.online
+│   ├── plugins_weadown.csv          # Plugins scrapeados de weadown.com
+│   ├── temas_wp.csv                 # Temas scrapeados de plugins-wp.online
+│   ├── temas_weadown.csv            # Temas scrapeados de weadown.com
+│   ├── comparacion_plugins_exactas.csv      # Coincidencias 100%
+│   ├── comparacion_plugins_similares.csv    # Coincidencias 80-99%
+│   ├── plugins_desactualizados.csv          # Plugins con versión antigua
+│   ├── plugins_faltantes.csv                # Plugins no encontrados en WP
+│   ├── comparacion_temas_exactas.csv        # Coincidencias 100%
+│   ├── comparacion_temas_similares.csv      # Coincidencias 80-99%
+│   ├── temas_desactualizados.csv            # Temas con versión antigua
+│   └── temas_faltantes.csv                  # Temas no encontrados en WP
 ├── templates/
-│   └── index.html          # Web UI template
-├── static/                 # Static assets (if needed)
-├── data/                   # Database storage (auto-created)
-├── cli.py                  # Command-line interface
-├── web_app.py             # Flask web application
-├── requirements.txt        # Python dependencies
-├── .env.example           # Configuration template
-├── .gitignore             # Git ignore rules
-└── README.md              # This file
+│   └── index.html                   # Interfaz web con tabs y filtros
+├── web_app.py                       # Aplicación Flask
+├── run_all.py                       # Script CLI para ejecutar todo
+├── requirements.txt                 # Dependencias del proyecto
+└── README.md                        # Este archivo
 ```
 
-## How It Works
+## Uso
 
-1. **Scraping**: The application scrapes plugin/theme listings from both weadown.com and pluginswp.online
-2. **Comparison**: It compares versions between the two sources to identify differences
-3. **Storage**: Results are stored in a SQLite database for history tracking
-4. **Notification**: If differences are found, an email is sent with:
-   - Plugin/theme names
-   - Version from each source
-   - Download URLs from weadown.com
-5. **Scheduling**: Optionally runs automatically once per day
+### 1. Interfaz de Línea de Comandos (CLI)
 
-## Email Notification Format
+Ejecutar todo el flujo de scraping y comparación con un solo comando:
 
-When differences are found, you'll receive an email containing:
+```bash
+python3 run_all.py
+```
 
-- **Subject**: Plugin Version Differences - YYYY-MM-DD
-- **Content**: 
-  - Summary of total differences found
-  - Table with plugin names, versions from both sources
-  - Direct download links from weadown.com
-  - Timestamp of the comparison
+Este script ejecuta en secuencia:
+1. Scraping de plugins de plugins-wp.online
+2. Scraping de plugins de weadown.com
+3. Scraping de temas de plugins-wp.online
+4. Scraping de temas de weadown.com
+5. Comparación de plugins
+6. Comparación de temas
 
-## Database
+Los resultados se guardan automáticamente en la carpeta `data/`.
 
-The application uses SQLite for storing comparison history. The database includes:
+### 2. Interfaz Web
 
-- **comparisons** table: Records of each comparison run
-- **differences** table: Detailed differences found in each run
+Iniciar el servidor web Flask:
 
-Database location is configurable via the `DATABASE_PATH` environment variable (default: `./data/comparisons.db`).
+```bash
+python3 web_app.py
+```
 
-## Troubleshooting
+La interfaz estará disponible en: **http://localhost:8000**
 
-### Email not sending
-- Verify SMTP credentials in .env file
-- For Gmail, ensure you're using an App Password
-- Check that your email provider allows SMTP connections
-- Run `python cli.py config` to verify configuration
+#### Características de la Interfaz Web:
 
-### Web UI not loading
-- Ensure Flask is installed: `pip install flask`
-- Check that port 5000 is not in use
-- Try a different port in .env: `FLASK_PORT=8000`
+- ✅ **Tabs**: Alterna entre Plugins y Temas
+- ✅ **Estadísticas**: Tarjetas con coincidencias, desactualizados y faltantes
+- ✅ **Filtros**: Todos, Exactos, Similares, Desactualizados
+- ✅ **Búsqueda**: Campo de búsqueda en tiempo real
+- ✅ **Botón "Scrapear Todo"**: Ejecuta el flujo completo en background
+- ✅ **Barra de progreso**: Actualización en tiempo real del scraping
+- ✅ **Tabla detallada**: Con versiones, estado y enlaces de descarga
 
-### No plugins found
-- The websites may have changed their structure
-- Check the scrapers in `src/scraper.py` may need updates
-- Verify internet connectivity
-- Check logs for specific error messages
+### 3. Ejecutar Scrapers Individuales
 
-### Permission errors
-- Ensure the `data/` directory has write permissions
-- On Linux/Mac: `chmod 755 data/`
+Puedes ejecutar scrapers individualmente si necesitas actualizar solo una fuente:
 
-## Development
+```bash
+# Scrapear solo plugins de plugins-wp.online
+python3 scrapers/scraper_plugins_wp.py
 
-### Adding custom scrapers
-Edit `src/scraper.py` to customize scraping logic for different website structures.
+# Scrapear solo plugins de weadown.com
+python3 scrapers/scraper_plugins_weadown.py
 
-### Customizing email templates
-Edit `src/email_notifier.py` to modify the email format.
+# Scrapear solo temas de plugins-wp.online
+python3 scrapers/scraper_temas_wp.py
 
-### Changing schedule frequency
-Modify the scheduler configuration in `web_app.py` or use environment variables.
+# Scrapear solo temas de weadown.com
+python3 scrapers/scraper_temas_weadown.py
+```
 
-## Security
+### 4. Ejecutar Comparadores Individuales
 
-- ⚠️ **Never commit your .env file** to version control
-- ✅ Use App Passwords instead of regular passwords
-- ✅ Keep your dependencies updated: `pip install --upgrade -r requirements.txt`
-- ✅ The .gitignore file is configured to exclude sensitive files
+```bash
+# Comparar solo plugins
+python3 comparadores/comparacion_plugins.py
 
-## Contributing
+# Comparar solo temas
+python3 comparadores/comparacion_temas.py
+```
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+## Cómo Funciona
 
-## License
+### 1. Scraping
+Los scrapers utilizan `requests` y `BeautifulSoup4` para extraer información de:
+- **plugins-wp.online**: Categorías de plugins y temas
+- **weadown.com**: Listados de plugins y temas de WordPress
 
-This project is provided as-is for educational and personal use.
+Cada scraper extrae:
+- Nombre del plugin/tema (limpio, sin versión)
+- Versión
+- URL del producto
+- Título original
 
-## Support
+### 2. Comparación con Umbral 80%
 
-For issues, questions, or suggestions, please open an issue on GitHub.
+Los comparadores utilizan `difflib.SequenceMatcher` para calcular la similitud entre nombres:
+
+```python
+from difflib import SequenceMatcher
+
+def similarity(a, b):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+```
+
+**Clasificación**:
+- **100%**: Coincidencia exacta
+- **80-99%**: Coincidencia similar (ej: "elementor pro" vs "elementor")
+- **<80%**: No se considera coincidencia
+
+### 3. Comparación de Versiones
+
+Las versiones se comparan como tuplas de números:
+- `3.18.1` vs `3.18.3` → `DESACTUALIZADO`
+- `8.5.2` vs `8.5.2` → `IGUAL`
+- `22.0` vs `21.7` → `ACTUALIZADO`
+
+### 4. Archivos CSV Generados
+
+**Para Plugins**:
+- `comparacion_plugins_exactas.csv`: Coincidencias 100%
+- `comparacion_plugins_similares.csv`: Coincidencias 80-99%
+- `plugins_desactualizados.csv`: Plugins con versión antigua en WP
+- `plugins_faltantes.csv`: Plugins en Weadown pero no en WP
+
+**Para Temas**:
+- `comparacion_temas_exactas.csv`: Coincidencias 100%
+- `comparacion_temas_similares.csv`: Coincidencias 80-99%
+- `temas_desactualizados.csv`: Temas con versión antigua en WP
+- `temas_faltantes.csv`: Temas en Weadown pero no en WP
+
+## Configuración Avanzada
+
+### Ajustar el Umbral de Similitud
+
+Para cambiar el umbral del 80%, edita los archivos en `comparadores/`:
+
+```python
+# En comparacion_plugins.py o comparacion_temas.py
+if best_similarity >= 0.80:  # Cambiar a 0.90 para 90%, etc.
+    # ...
+```
+
+### Ajustar Páginas a Scrapear
+
+Por defecto, cada scraper procesa 5 páginas. Para cambiar esto:
+
+```python
+# En cualquier scraper
+if __name__ == '__main__':
+    plugins = scrape_plugins_wp(max_pages=10)  # Cambiar número
+```
+
+### Cambiar Puerto del Servidor Web
+
+Edita `web_app.py`:
+
+```python
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000, debug=False)  # Cambiar puerto
+```
+
+## Solución de Problemas
+
+### Los scrapers no encuentran datos
+- Verifica tu conexión a internet
+- Los sitios web pueden haber cambiado su estructura HTML
+- Revisa los selectores CSS en los scrapers
+- Aumenta el timeout en las peticiones HTTP
+
+### El servidor web no inicia
+- Asegúrate de que Flask está instalado: `pip install Flask`
+- Verifica que el puerto 8000 no esté en uso
+- Cambia el puerto en `web_app.py` si es necesario
+
+### Los CSVs están vacíos
+- Ejecuta los scrapers individualmente para verificar errores
+- Revisa que la carpeta `data/` tiene permisos de escritura
+- En Linux/Mac: `chmod 755 data/`
+
+### Problemas de encoding en Windows
+- Asegúrate de usar `encoding='utf-8'` al abrir archivos
+- Usa un editor de texto con soporte UTF-8
+
+## Desarrollo
+
+### Agregar Nuevos Scrapers
+
+Crea un nuevo archivo en `scrapers/` siguiendo esta estructura:
+
+```python
+import requests
+from bs4 import BeautifulSoup
+import csv
+
+def scrape_mi_sitio():
+    # Tu lógica de scraping
+    pass
+
+def save_to_csv(data, filename):
+    # Guardar en data/
+    pass
+
+if __name__ == '__main__':
+    data = scrape_mi_sitio()
+    save_to_csv(data, 'mi_sitio.csv')
+```
+
+### Personalizar la Interfaz Web
+
+Edita `templates/index.html` para cambiar:
+- Colores y gradientes
+- Texto y etiquetas
+- Estructura de las tablas
+- Filtros y búsqueda
+
+## Contribuir
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Haz fork del proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
+
+## Licencia
+
+Este proyecto se proporciona tal cual para uso educativo y personal.
+
+## Soporte
+
+Para problemas, preguntas o sugerencias, abre un issue en GitHub.
 
 ---
 
-**Note**: This tool is designed for personal use. Please respect the terms of service of the websites being scraped and ensure you have permission to scrape their content.
+**Nota**: Esta herramienta está diseñada para uso personal. Por favor respeta los términos de servicio de los sitios web que se scrapean y asegúrate de tener permiso para extraer su contenido.
