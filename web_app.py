@@ -1,126 +1,140 @@
+#!/usr/bin/env python3
 """
-Flask web application for viewing comparison history and controlling runs.
+Flask web application funcional con threading y subprocess
+Interfaz web mejorada con scraping en tiempo real
 """
-from flask import Flask, render_template, jsonify, request
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime
-import logging
+from flask import Flask, render_template, redirect, jsonify
+import subprocess
+import threading
+import os
+import csv
+import sys
 
-from src.app import ComparisonRunner
-from src.config import Config
-from src.database import Database
+app = Flask(__name__)
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Estado global del scraper
+scraper_status = {
+    "running": False,
+    "progress": "",
+    "current_step": 0,
+    "total_steps": 6,
+    "log": []
+}
 
-# Initialize Flask app
-app = Flask(__name__, 
-            template_folder='templates',
-            static_folder='static')
+def run_all_scrapers():
+    """Ejecuta todo el flujo de scraping y comparación"""
+    global scraper_status
+    scraper_status["running"] = True
+    scraper_status["log"] = []
+    scraper_status["current_step"] = 0
+    
+    steps = [
+        ('scrapers/scraper_plugins_wp.py', 'Plugins plugins-wp.online'),
+        ('scrapers/scraper_plugins_weadown.py', 'Plugins weadown.com'),
+        ('scrapers/scraper_temas_wp.py', 'Temas plugins-wp.online'),
+        ('scrapers/scraper_temas_weadown.py', 'Temas weadown.com'),
+        ('comparadores/comparacion_plugins.py', 'Comparación plugins'),
+        ('comparadores/comparacion_temas.py', 'Comparación temas')
+    ]
+    
+    for i, (script, description) in enumerate(steps, 1):
+        scraper_status["current_step"] = i
+        scraper_status["progress"] = f"⏳ {description}..."
+        scraper_status["log"].append(f"[{i}/6] {description}")
+        
+        try:
+            result = subprocess.run(
+                [sys.executable, script],
+                capture_output=True,
+                text=True,
+                timeout=600,
+                cwd=os.path.dirname(os.path.abspath(__file__))
+            )
+            
+            if result.returncode == 0:
+                scraper_status["log"].append(f"✅ {description} completado")
+            else:
+                scraper_status["log"].append(f"❌ {description} falló")
+                
+        except Exception as e:
+            scraper_status["log"].append(f"❌ Error en {description}: {str(e)}")
+    
+    scraper_status["progress"] = "✅ ¡Proceso completado!"
+    scraper_status["running"] = False
 
-# Initialize components
-config = Config()
-runner = ComparisonRunner()
-db = Database(config.DATABASE_PATH)
-
-# Initialize scheduler
-scheduler = BackgroundScheduler()
-scheduler.start()
-
-
-def scheduled_comparison():
-    """Function to run on schedule."""
-    logger.info("Running scheduled comparison...")
-    runner.run_comparison()
-
-
-# Schedule daily run if enabled
-if config.SCHEDULE_ENABLED:
-    scheduler.add_job(
-        scheduled_comparison,
-        'cron',
-        hour=config.SCHEDULE_HOUR,
-        minute=config.SCHEDULE_MINUTE,
-        id='daily_comparison'
-    )
-    logger.info(f"Scheduled daily comparison at {config.SCHEDULE_HOUR:02d}:{config.SCHEDULE_MINUTE:02d}")
-
+def load_csv_data(filename):
+    """Carga datos de un archivo CSV"""
+    filepath = os.path.join('data', filename)
+    if not os.path.exists(filepath):
+        return []
+    
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            return list(reader)
+    except Exception:
+        return []
 
 @app.route('/')
 def index():
-    """Main page showing comparison history."""
-    return render_template('index.html')
-
-
-@app.route('/api/comparisons')
-def get_comparisons():
-    """API endpoint to get all comparisons."""
-    comparisons = db.get_all_comparisons()
-    return jsonify(comparisons)
-
-
-@app.route('/api/comparison/<int:comparison_id>')
-def get_comparison(comparison_id):
-    """API endpoint to get details of a specific comparison."""
-    comparison = db.get_comparison_details(comparison_id)
-    if comparison:
-        return jsonify(comparison)
-    return jsonify({'error': 'Comparison not found'}), 404
-
-
-@app.route('/api/run', methods=['POST'])
-def run_comparison():
-    """API endpoint to trigger a comparison run."""
-    if runner.is_running():
-        return jsonify({'error': 'Comparison already running'}), 400
+    """Página principal con estadísticas y tablas"""
+    # Cargar datos de comparación
+    plugins_exactas = load_csv_data('comparacion_plugins_exactas.csv')
+    plugins_similares = load_csv_data('comparacion_plugins_similares.csv')
+    plugins_desactualizados = load_csv_data('plugins_desactualizados.csv')
+    plugins_faltantes = load_csv_data('plugins_faltantes.csv')
     
-    success = runner.run_comparison_async()
-    if success:
-        return jsonify({'message': 'Comparison started', 'status': 'running'})
-    return jsonify({'error': 'Failed to start comparison'}), 500
+    temas_exactas = load_csv_data('comparacion_temas_exactas.csv')
+    temas_similares = load_csv_data('comparacion_temas_similares.csv')
+    temas_desactualizados = load_csv_data('temas_desactualizados.csv')
+    temas_faltantes = load_csv_data('temas_faltantes.csv')
+    
+    # Preparar datos para la vista
+    data = {
+        'plugins': {
+            'exactas': plugins_exactas,
+            'similares': plugins_similares,
+            'desactualizados': plugins_desactualizados,
+            'faltantes': plugins_faltantes,
+            'total_coincidencias': len(plugins_exactas) + len(plugins_similares),
+            'total_desactualizados': len(plugins_desactualizados),
+            'total_faltantes': len(plugins_faltantes)
+        },
+        'temas': {
+            'exactas': temas_exactas,
+            'similares': temas_similares,
+            'desactualizados': temas_desactualizados,
+            'faltantes': temas_faltantes,
+            'total_coincidencias': len(temas_exactas) + len(temas_similares),
+            'total_desactualizados': len(temas_desactualizados),
+            'total_faltantes': len(temas_faltantes)
+        }
+    }
+    
+    return render_template('index.html', data=data)
 
+@app.route('/scrapear')
+def scrapear():
+    """Inicia el proceso de scraping en background"""
+    if not scraper_status["running"]:
+        thread = threading.Thread(target=run_all_scrapers)
+        thread.daemon = True
+        thread.start()
+    return redirect('/')
 
-@app.route('/api/stop', methods=['POST'])
-def stop_comparison():
-    """API endpoint to stop a running comparison."""
-    if runner.stop():
-        return jsonify({'message': 'Comparison stopped', 'status': 'stopped'})
-    return jsonify({'error': 'No comparison running'}), 400
+@app.route('/status')
+def status():
+    """Retorna el estado actual del scraping"""
+    return jsonify(scraper_status)
 
-
-@app.route('/api/status')
-def get_status():
-    """API endpoint to get current status."""
-    return jsonify({
-        'running': runner.is_running(),
-        'smtp_configured': config.is_configured(),
-        'schedule_enabled': config.SCHEDULE_ENABLED,
-        'schedule_time': f"{config.SCHEDULE_HOUR:02d}:{config.SCHEDULE_MINUTE:02d}"
-    })
-
-
-@app.route('/api/config')
-def get_config():
-    """API endpoint to get configuration status."""
-    validation_errors = config.validate()
-    return jsonify({
-        'smtp_configured': config.is_configured(),
-        'smtp_host': config.SMTP_HOST,
-        'smtp_port': config.SMTP_PORT,
-        'smtp_from': config.SMTP_FROM,
-        'smtp_to': config.SMTP_TO,
-        'schedule_enabled': config.SCHEDULE_ENABLED,
-        'schedule_time': f"{config.SCHEDULE_HOUR:02d}:{config.SCHEDULE_MINUTE:02d}",
-        'validation_errors': validation_errors
-    })
-
-
-def main():
-    """Run the Flask application."""
-    logger.info(f"Starting web server on port {config.FLASK_PORT}...")
-    logger.info(f"Access the UI at http://localhost:{config.FLASK_PORT}")
-    app.run(host='0.0.0.0', port=config.FLASK_PORT, debug=False)
-
+@app.route('/editar', methods=['POST'])
+def editar():
+    """Permite editar coincidencias manualmente (placeholder)"""
+    # TODO: Implementar edición manual si es necesario
+    return jsonify({'message': 'Función de edición no implementada aún'})
 
 if __name__ == '__main__':
-    main()
+    print("=" * 60)
+    print("🚀 Iniciando servidor web en http://0.0.0.0:8000")
+    print("=" * 60)
+    app.run(host='0.0.0.0', port=8000, debug=False)

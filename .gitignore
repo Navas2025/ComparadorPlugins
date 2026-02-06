@@ -40,6 +40,9 @@ ENV/
 *.sqlite
 *.sqlite3
 
+# Data files (CSVs)
+data/*.csv
+
 # Logs
 *.log
 
