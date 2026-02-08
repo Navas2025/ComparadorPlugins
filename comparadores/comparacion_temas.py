@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Comparador de temas con umbral de similitud del 80%
+Comparador de temas con umbral de similitud configurable
 Compara temas_wp.csv y temas_weadown.csv
 Genera archivos de salida con comparaciones
 """
 import csv
 import os
+import json
+import argparse
 from difflib import SequenceMatcher
 
 def similarity(a, b):
@@ -70,10 +72,23 @@ def save_csv(data, filename, fieldnames):
     
     print(f"  ✓ Guardado: {filepath} ({len(data)} registros)")
 
-def compare_temas():
-    """Compara temas de ambas fuentes con umbral del 80%"""
+def load_config(filename):
+    """Load JSON configuration file"""
+    filepath = os.path.join('config', filename)
+    if not os.path.exists(filepath):
+        return {} if 'manual' in filename else {'plugins': [], 'themes': []}
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {} if 'manual' in filename else {'plugins': [], 'themes': []}
+
+def compare_temas(threshold=80):
+    """Compara temas de ambas fuentes con umbral configurable"""
+    threshold_ratio = threshold / 100.0
+    
     print("=" * 60)
-    print("Comparando temas (umbral 80%)")
+    print(f"Comparando temas (umbral {threshold}%)")
     print("=" * 60)
     
     # Cargar datos
@@ -81,8 +96,13 @@ def compare_temas():
     temas_wp = load_csv('temas_wp.csv')
     temas_weadown = load_csv('temas_weadown.csv')
     
+    # Cargar configuración
+    blacklist = load_config('blacklist.json').get('themes', [])
+    blacklist_names = [item['name'] for item in blacklist]
+    
     print(f"  ✓ Temas WP: {len(temas_wp)}")
     print(f"  ✓ Temas Weadown: {len(temas_weadown)}")
+    print(f"  ✓ Blacklist: {len(blacklist_names)}")
     
     if not temas_wp or not temas_weadown:
         print("\n❌ No hay datos suficientes para comparar")
@@ -101,6 +121,11 @@ def compare_temas():
     
     for wd_tema in temas_weadown:
         wd_nombre = wd_tema['nombre']
+        
+        # Skip blacklisted items
+        if wd_nombre in blacklist_names:
+            continue
+        
         best_match = None
         best_similarity = 0.0
         best_index = -1
@@ -111,6 +136,11 @@ def compare_temas():
                 continue
             
             wp_nombre = wp_tema['nombre']
+            
+            # Skip blacklisted items
+            if wp_nombre in blacklist_names:
+                continue
+            
             sim = similarity(wd_nombre, wp_nombre)
             
             if sim > best_similarity:
@@ -119,7 +149,7 @@ def compare_temas():
                 best_index = idx
         
         # Clasificar según similitud
-        if best_similarity >= 0.80:
+        if best_similarity >= threshold_ratio:
             matched_wp_indices.add(best_index)
             
             record = {
@@ -176,7 +206,13 @@ def compare_temas():
 
 if __name__ == '__main__':
     try:
-        compare_temas()
+        parser = argparse.ArgumentParser(description='Comparar temas con umbral configurable')
+        parser.add_argument('--threshold', type=int, default=80, 
+                          help='Umbral de similitud (80-100)')
+        args = parser.parse_args()
+        
+        threshold = max(80, min(100, args.threshold))  # Clamp between 80-100
+        compare_temas(threshold)
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
