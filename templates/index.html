@@ -3,545 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador de Plugins y Temas</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header-left h1 {
-            font-size: 2em;
-            margin-bottom: 5px;
-        }
-        
-        .header-left p {
-            opacity: 0.9;
-        }
-        
-        .btn-scrapear {
-            padding: 12px 30px;
-            background: white;
-            color: #667eea;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .btn-scrapear:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(255,255,255,0.3);
-        }
-        
-        .btn-scrapear:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: #e0e0e0;
-            position: relative;
-            display: none;
-        }
-        
-        .progress-bar.active {
-            display: block;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            transition: width 0.3s;
-        }
-        
-        .status-message {
-            padding: 15px 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
-            display: none;
-        }
-        
-        .status-message.active {
-            display: block;
-        }
-        
-        .tabs {
-            display: flex;
-            border-bottom: 2px solid #e0e0e0;
-            background: #f8f9fa;
-        }
-        
-        .tab {
-            padding: 15px 30px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 16px;
-            font-weight: 600;
-            color: #666;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-        }
-        
-        .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: white;
-        }
-        
-        .tab:hover {
-            background: #f0f0f0;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 30px;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            padding: 20px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .stat-card h3 {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-        }
-        
-        .stat-card p {
-            font-size: 32px;
-            font-weight: 700;
-        }
-        
-        .stat-card.green {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-        
-        .stat-card.orange {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        
-        .stat-card.red {
-            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        }
-        
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        
-        .filter-btn {
-            padding: 10px 20px;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-        
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .data-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-        
-        .data-table td {
-            padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .data-table tr:hover {
-            background: #f8f9fa;
-        }
-        
-        .badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .link-btn {
-            padding: 6px 12px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 12px;
-            font-weight: 600;
-            display: inline-block;
-            transition: all 0.3s;
-        }
-        
-        .link-btn:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-        
-        .empty-state h3 {
-            margin-top: 20px;
-            font-size: 1.5em;
-        }
-        
-        .loading-spinner {
-            text-align: center;
-            padding: 40px;
-        }
-        
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .log-box {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-        
-        .log-entry {
-            padding: 5px 0;
-        }
-    </style>
+    <title>🔧 Comparador de Plugins y Temas WordPress</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <div class="header-left">
-                <h1>🔌 Comparador de Plugins y Temas</h1>
-                <p>plugins-wp.online vs weadown.com</p>
-            </div>
-            <button class="btn-scrapear" id="btnScrapear" onclick="scrapearTodo()">
-                🔄 Scrapear Todo
-            </button>
+            <h1>🔧 Comparador de Plugins y Temas WordPress</h1>
+            <p>Gestión entre Plugins-WP.online y Weadown.com</p>
         </div>
-        
-        <div class="progress-bar" id="progressBar">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
-        
-        <div class="status-message" id="statusMessage"></div>
-        
+
+        <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="cambiarTab('plugins')">Plugins</button>
-            <button class="tab" onclick="cambiarTab('temas')">Temas</button>
+            <button class="tab active" data-tab="plugins" onclick="switchTab('plugins')">Plugins</button>
+            <button class="tab" data-tab="themes" onclick="switchTab('themes')">Temas</button>
         </div>
-        
-        <div class="tab-content active" id="tab-plugins">
+
+        <!-- Plugins Tab Content -->
+        <div class="tab-content active" data-tab="plugins">
+            <!-- Scraping Controls -->
+            <div class="scraping-controls">
+                <h3>🔄 Controles de Scraping</h3>
+                <div class="button-grid">
+                    <button id="btn-pluginswp-plugins" class="btn btn-primary" onclick="scrapeSite('pluginswp', 'plugins')">
+                        🔄 Scrapear PW Plugins
+                    </button>
+                    <button id="btn-weadown-plugins" class="btn btn-primary" onclick="scrapeSite('weadown', 'plugins')">
+                        🔄 Scrapear WD Plugins
+                    </button>
+                    <button id="btn-compare-plugins" class="btn btn-success" onclick="compareAll('plugins')">
+                        🔍 Comparar Plugins
+                    </button>
+                </div>
+
+                <!-- Threshold Control -->
+                <div class="threshold-control">
+                    <label>Umbral de Similitud:</label>
+                    <input type="range" id="threshold-slider" class="threshold-slider" min="80" max="100" value="80">
+                    <span id="threshold-value" class="threshold-value">80%</span>
+                </div>
+
+                <!-- Progress Bars -->
+                <div class="progress-section">
+                    <div id="progress-pluginswp-plugins" class="progress-item">
+                        <div class="progress-label">PW Plugins</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-message">IDLE</div>
+                    </div>
+                    <div id="progress-weadown-plugins" class="progress-item">
+                        <div class="progress-label">WD Plugins</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-message">IDLE</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
             <div class="stats">
                 <div class="stat-card green">
-                    <h3>Coincidencias</h3>
-                    <p id="plugins-coincidencias">{{ data.plugins.total_coincidencias }}</p>
+                    <h3>Con Coincidencia</h3>
+                    <p id="stat-matches-plugins">0</p>
                 </div>
-                <div class="stat-card orange">
+                <div class="stat-card yellow">
                     <h3>Desactualizados</h3>
-                    <p id="plugins-desactualizados">{{ data.plugins.total_desactualizados }}</p>
+                    <p id="stat-outdated-plugins">0</p>
                 </div>
                 <div class="stat-card red">
-                    <h3>Faltantes</h3>
-                    <p id="plugins-faltantes">{{ data.plugins.total_faltantes }}</p>
+                    <h3>Sin Match</h3>
+                    <p id="stat-nomatch-plugins">0</p>
+                </div>
+                <div class="stat-card gray">
+                    <h3>Blacklisted</h3>
+                    <p id="stat-blacklisted-plugins">0</p>
                 </div>
             </div>
-            
+
+            <!-- Search and Filters -->
             <div class="controls">
-                <input type="text" class="search-box" id="search-plugins" placeholder="🔍 Buscar plugin..." onkeyup="buscar('plugins')">
-                <button class="filter-btn active" onclick="filtrar('plugins', 'todos')">Todos</button>
-                <button class="filter-btn" onclick="filtrar('plugins', 'exactos')">Exactos</button>
-                <button class="filter-btn" onclick="filtrar('plugins', 'similares')">Similares</button>
-                <button class="filter-btn" onclick="filtrar('plugins', 'desactualizados')">Desactualizados</button>
+                <input type="text" id="search-input" class="search-box" placeholder="🔍 Buscar plugin..." oninput="searchItems()">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="todos" onclick="setFilter('todos')">Todos</button>
+                    <button class="filter-btn" data-filter="exactos" onclick="setFilter('exactos')">Con Match</button>
+                    <button class="filter-btn" data-filter="similares" onclick="setFilter('similares')">Similares</button>
+                    <button class="filter-btn" data-filter="sin_match" onclick="setFilter('sin_match')">Sin Match</button>
+                    <button class="filter-btn" data-filter="desactualizados" onclick="setFilter('desactualizados')">Desactualizados</button>
+                </div>
             </div>
-            
-            <div id="table-plugins"></div>
+
+            <!-- Table -->
+            <div id="table-container">
+                <div class="empty-state">
+                    <h3>📭 No hay datos todavía</h3>
+                    <p>Haz clic en "Scrapear PW Plugins" para comenzar</p>
+                </div>
+            </div>
         </div>
-        
-        <div class="tab-content" id="tab-temas">
+
+        <!-- Themes Tab Content -->
+        <div class="tab-content" data-tab="themes">
+            <!-- Scraping Controls -->
+            <div class="scraping-controls">
+                <h3>🔄 Controles de Scraping</h3>
+                <div class="button-grid">
+                    <button id="btn-pluginswp-themes" class="btn btn-primary" onclick="scrapeSite('pluginswp', 'themes')">
+                        🔄 Scrapear PW Temas
+                    </button>
+                    <button id="btn-weadown-themes" class="btn btn-primary" onclick="scrapeSite('weadown', 'themes')">
+                        🔄 Scrapear WD Temas
+                    </button>
+                    <button id="btn-compare-themes" class="btn btn-success" onclick="compareAll('themes')">
+                        🔍 Comparar Temas
+                    </button>
+                </div>
+
+                <!-- Progress Bars -->
+                <div class="progress-section">
+                    <div id="progress-pluginswp-themes" class="progress-item">
+                        <div class="progress-label">PW Temas</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-message">IDLE</div>
+                    </div>
+                    <div id="progress-weadown-themes" class="progress-item">
+                        <div class="progress-label">WD Temas</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-message">IDLE</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
             <div class="stats">
                 <div class="stat-card green">
-                    <h3>Coincidencias</h3>
-                    <p id="temas-coincidencias">{{ data.temas.total_coincidencias }}</p>
+                    <h3>Con Coincidencia</h3>
+                    <p id="stat-matches-themes">0</p>
                 </div>
-                <div class="stat-card orange">
+                <div class="stat-card yellow">
                     <h3>Desactualizados</h3>
-                    <p id="temas-desactualizados">{{ data.temas.total_desactualizados }}</p>
+                    <p id="stat-outdated-themes">0</p>
                 </div>
                 <div class="stat-card red">
-                    <h3>Faltantes</h3>
-                    <p id="temas-faltantes">{{ data.temas.total_faltantes }}</p>
+                    <h3>Sin Match</h3>
+                    <p id="stat-nomatch-themes">0</p>
+                </div>
+                <div class="stat-card gray">
+                    <h3>Blacklisted</h3>
+                    <p id="stat-blacklisted-themes">0</p>
                 </div>
             </div>
-            
+
+            <!-- Search and Filters -->
             <div class="controls">
-                <input type="text" class="search-box" id="search-temas" placeholder="🔍 Buscar tema..." onkeyup="buscar('temas')">
-                <button class="filter-btn active" onclick="filtrar('temas', 'todos')">Todos</button>
-                <button class="filter-btn" onclick="filtrar('temas', 'exactos')">Exactos</button>
-                <button class="filter-btn" onclick="filtrar('temas', 'similares')">Similares</button>
-                <button class="filter-btn" onclick="filtrar('temas', 'desactualizados')">Desactualizados</button>
+                <input type="text" class="search-box" placeholder="🔍 Buscar tema..." oninput="searchItems()">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="todos" onclick="setFilter('todos')">Todos</button>
+                    <button class="filter-btn" data-filter="exactos" onclick="setFilter('exactos')">Con Match</button>
+                    <button class="filter-btn" data-filter="similares" onclick="setFilter('similares')">Similares</button>
+                    <button class="filter-btn" data-filter="sin_match" onclick="setFilter('sin_match')">Sin Match</button>
+                    <button class="filter-btn" data-filter="desactualizados" onclick="setFilter('desactualizados')">Desactualizados</button>
+                </div>
             </div>
-            
-            <div id="table-temas"></div>
+
+            <!-- Table -->
+            <div id="table-container-themes">
+                <div class="empty-state">
+                    <h3>📭 No hay datos todavía</h3>
+                    <p>Haz clic en "Scrapear PW Temas" para comenzar</p>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <script>
-        // Datos globales
-        const data = {{ data|tojson }};
-        let currentFilter = { plugins: 'todos', temas: 'todos' };
-        
-        // Inicializar tabla
-        function renderTable(tipo) {
-            const tableDiv = document.getElementById(`table-${tipo}`);
-            const filter = currentFilter[tipo];
-            const searchTerm = document.getElementById(`search-${tipo}`).value.toLowerCase();
-            
-            let items = [];
-            
-            // Combinar datos según filtro
-            if (filter === 'todos') {
-                items = [
-                    ...data[tipo].exactas.map(i => ({...i, tipo: 'exacta'})),
-                    ...data[tipo].similares.map(i => ({...i, tipo: 'similar'})),
-                    ...data[tipo].faltantes.map(i => ({...i, tipo: 'faltante'}))
-                ];
-            } else if (filter === 'exactos') {
-                items = data[tipo].exactas.map(i => ({...i, tipo: 'exacta'}));
-            } else if (filter === 'similares') {
-                items = data[tipo].similares.map(i => ({...i, tipo: 'similar'}));
-            } else if (filter === 'desactualizados') {
-                items = data[tipo].desactualizados.map(i => ({...i, tipo: 'desactualizado'}));
-            }
-            
-            // Aplicar búsqueda
-            if (searchTerm) {
-                items = items.filter(item => {
-                    const nombre = (item.nombre_wp || item.nombre_weadown || '').toLowerCase();
-                    return nombre.includes(searchTerm);
-                });
-            }
-            
-            // Renderizar
-            if (items.length === 0) {
-                tableDiv.innerHTML = '<div class="empty-state"><h3>No hay datos para mostrar</h3><p>Haz clic en "Scrapear Todo" para obtener datos</p></div>';
-                return;
-            }
-            
-            let html = '<table class="data-table"><thead><tr>';
-            html += '<th>Tipo</th>';
-            html += '<th>Tu Web (WP)</th>';
-            html += '<th>Weadown</th>';
-            html += '<th>Versión WP</th>';
-            html += '<th>Versión Weadown</th>';
-            html += '<th>Estado</th>';
-            html += '<th>Similitud</th>';
-            html += '<th>Descargar</th>';
-            html += '</tr></thead><tbody>';
-            
-            items.forEach(item => {
-                const tipoLabel = tipo === 'plugins' ? 'Plugin' : 'Tema';
-                const estadoBadge = getEstadoBadge(item.estado);
-                const tipoTexto = item.tipo === 'exacta' ? 'Exacto' : item.tipo === 'similar' ? 'Similar' : 'Faltante';
-                
-                html += '<tr>';
-                html += `<td>${tipoLabel}</td>`;
-                html += `<td>${item.nombre_wp || '-'}</td>`;
-                html += `<td>${item.nombre_weadown || '-'}</td>`;
-                html += `<td>${item.version_wp || '-'}</td>`;
-                html += `<td>${item.version_weadown || '-'}</td>`;
-                html += `<td>${estadoBadge}</td>`;
-                html += `<td>${item.similitud || '100%'}</td>`;
-                html += `<td>${item.url_weadown ? `<a href="${item.url_weadown}" class="link-btn" target="_blank">Ver</a>` : '-'}</td>`;
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table>';
-            tableDiv.innerHTML = html;
-        }
-        
-        function getEstadoBadge(estado) {
-            if (!estado) return '<span class="badge badge-success">N/A</span>';
-            if (estado === 'DESACTUALIZADO') return '<span class="badge badge-danger">Desactualizado</span>';
-            if (estado === 'ACTUALIZADO') return '<span class="badge badge-success">Actualizado</span>';
-            if (estado === 'IGUAL') return '<span class="badge badge-success">Igual</span>';
-            return '<span class="badge badge-warning">' + estado + '</span>';
-        }
-        
-        function cambiarTab(tipo) {
-            // Actualizar tabs
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Actualizar contenido
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`tab-${tipo}`).classList.add('active');
-        }
-        
-        function filtrar(tipo, filtro) {
-            currentFilter[tipo] = filtro;
-            
-            // Actualizar botones
-            const parent = event.target.parentElement;
-            parent.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            renderTable(tipo);
-        }
-        
-        function buscar(tipo) {
-            renderTable(tipo);
-        }
-        
-        async function scrapearTodo() {
-            const btn = document.getElementById('btnScrapear');
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-            const statusMsg = document.getElementById('statusMessage');
-            
-            btn.disabled = true;
-            btn.textContent = '⏳ Scrapeando...';
-            progressBar.classList.add('active');
-            statusMsg.classList.add('active');
-            
-            // Iniciar scraping
-            window.location.href = '/scrapear';
-            
-            // Poll status
-            const interval = setInterval(async () => {
-                const response = await fetch('/status');
-                const status = await response.json();
-                
-                const progress = (status.current_step / status.total_steps) * 100;
-                progressFill.style.width = progress + '%';
-                statusMsg.innerHTML = '<strong>' + status.progress + '</strong>';
-                
-                if (!status.running) {
-                    clearInterval(interval);
-                    btn.disabled = false;
-                    btn.textContent = '🔄 Scrapear Todo';
-                    
-                    setTimeout(() => {
-                        progressBar.classList.remove('active');
-                        statusMsg.classList.remove('active');
-                        location.reload();
-                    }, 2000);
-                }
-            }, 1000);
-        }
-        
-        // Inicializar tablas
-        renderTable('plugins');
-        renderTable('temas');
-    </script>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Editar Match Manual</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label>Nombre:</label>
+                <input type="text" id="edit-item-name" readonly>
+            </div>
+            <div class="form-group">
+                <label>URL de Weadown:</label>
+                <input type="text" id="edit-weadown-url" placeholder="https://weadown.com/...">
+            </div>
+            <div class="form-group">
+                <label>Nombre en Weadown:</label>
+                <input type="text" id="edit-weadown-name" placeholder="Nombre exacto del plugin/tema">
+            </div>
+            <div class="form-group">
+                <label>Versión en Weadown:</label>
+                <input type="text" id="edit-weadown-version" placeholder="1.0.0">
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveManualMatch()">💾 Guardar</button>
+                <button class="btn" onclick="closeEditModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
