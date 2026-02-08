@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
-Comparador de plugins con umbral de similitud del 80%
+Comparador de plugins con umbral de similitud configurable
 Compara plugins_wp.csv y plugins_weadown.csv
 Genera archivos de salida con comparaciones
 """
 import csv
 import os
+import json
+import argparse
 from difflib import SequenceMatcher
 
 def similarity(a, b):
@@ -70,10 +72,23 @@ def save_csv(data, filename, fieldnames):
     
     print(f"  ✓ Guardado: {filepath} ({len(data)} registros)")
 
-def compare_plugins():
-    """Compara plugins de ambas fuentes con umbral del 80%"""
+def load_config(filename):
+    """Load JSON configuration file"""
+    filepath = os.path.join('config', filename)
+    if not os.path.exists(filepath):
+        return {} if 'manual' in filename else {'plugins': [], 'themes': []}
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {} if 'manual' in filename else {'plugins': [], 'themes': []}
+
+def compare_plugins(threshold=80):
+    """Compara plugins de ambas fuentes con umbral configurable"""
+    threshold_ratio = threshold / 100.0
+    
     print("=" * 60)
-    print("Comparando plugins (umbral 80%)")
+    print(f"Comparando plugins (umbral {threshold}%)")
     print("=" * 60)
     
     # Cargar datos
@@ -81,8 +96,13 @@ def compare_plugins():
     plugins_wp = load_csv('plugins_wp.csv')
     plugins_weadown = load_csv('plugins_weadown.csv')
     
+    # Cargar configuración
+    blacklist = load_config('blacklist.json').get('plugins', [])
+    blacklist_names = [item['name'] for item in blacklist]
+    
     print(f"  ✓ Plugins WP: {len(plugins_wp)}")
     print(f"  ✓ Plugins Weadown: {len(plugins_weadown)}")
+    print(f"  ✓ Blacklist: {len(blacklist_names)}")
     
     if not plugins_wp or not plugins_weadown:
         print("\n❌ No hay datos suficientes para comparar")
@@ -101,6 +121,11 @@ def compare_plugins():
     
     for wd_plugin in plugins_weadown:
         wd_nombre = wd_plugin['nombre']
+        
+        # Skip blacklisted items
+        if wd_nombre in blacklist_names:
+            continue
+        
         best_match = None
         best_similarity = 0.0
         best_index = -1
@@ -111,6 +136,11 @@ def compare_plugins():
                 continue
             
             wp_nombre = wp_plugin['nombre']
+            
+            # Skip blacklisted items
+            if wp_nombre in blacklist_names:
+                continue
+            
             sim = similarity(wd_nombre, wp_nombre)
             
             if sim > best_similarity:
@@ -119,7 +149,7 @@ def compare_plugins():
                 best_index = idx
         
         # Clasificar según similitud
-        if best_similarity >= 0.80:
+        if best_similarity >= threshold_ratio:
             matched_wp_indices.add(best_index)
             
             record = {
@@ -176,7 +206,13 @@ def compare_plugins():
 
 if __name__ == '__main__':
     try:
-        compare_plugins()
+        parser = argparse.ArgumentParser(description='Comparar plugins con umbral configurable')
+        parser.add_argument('--threshold', type=int, default=80, 
+                          help='Umbral de similitud (80-100)')
+        args = parser.parse_args()
+        
+        threshold = max(80, min(100, args.threshold))  # Clamp between 80-100
+        compare_plugins(threshold)
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
